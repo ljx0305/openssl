@@ -66,10 +66,13 @@ my $P2intermediate="tmp_intP2.ss";
 my $server_sess="server.ss";
 my $client_sess="client.ss";
 
+# ssltest_old.c is deprecated in favour of the new framework in ssl_test.c
+# If you're adding tests here, you probably want to convert them to the
+# new format in ssl_test.c and add recipes to 80-test_ssl_new.t instead.
 plan tests =>
     1				# For testss
-    + 1				# For ssltest -test_cipherlist
-    + 15			# For the first testssl
+    + 1				# For ssltest_old -test_cipherlist
+    + 14			# For the first testssl
     + 16			# For the first testsslproxy
     + 16			# For the second testsslproxy
     ;
@@ -86,10 +89,10 @@ subtest 'test_ss' => sub {
     }
 };
 
-my $check = ok(run(test(["ssltest","-test_cipherlist"])), "running ssltest");
+my $check = ok(run(test(["ssltest_old","-test_cipherlist"])), "running ssltest_old");
 
   SKIP: {
-      skip "ssltest ended with error, skipping the rest", 3
+      skip "ssltest_old ended with error, skipping the rest", 3
 	  if !$check;
 
       note('test_ssl -- key U');
@@ -317,7 +320,7 @@ sub testssl {
     my @CA = $CAtmp ? ("-CAfile", $CAtmp) : ("-CApath", bldtop_dir("certs"));
     my @extra = @_;
 
-    my @ssltest = ("ssltest",
+    my @ssltest = ("ssltest_old",
 		   "-s_key", $key, "-s_cert", $cert,
 		   "-c_key", $key, "-c_cert", $cert);
 
@@ -442,7 +445,7 @@ sub testssl {
             ok(run(test([@ssltest, "-ipv4", @extra])),
                'test TLS via IPv4');
           }
-          
+
         SKIP: {
             skip "No IPv6 available on this machine", 1
                 unless !disabled("sock") && have_IPv6();
@@ -533,13 +536,13 @@ sub testssl {
 	    skip "skipping RSA tests", 2
 		if $no_rsa;
 
-	    ok(run(test(["ssltest", "-v", "-bio_pair", "-tls1", "-s_cert", srctop_file("apps","server2.pem"), "-no_dhe", "-no_ecdhe", "-num", "10", "-f", "-time", @extra])),
+	    ok(run(test(["ssltest_old", "-v", "-bio_pair", "-tls1", "-s_cert", srctop_file("apps","server2.pem"), "-no_dhe", "-no_ecdhe", "-num", "10", "-f", "-time", @extra])),
 	       'test tlsv1 with 1024bit RSA, no (EC)DHE, multiple handshakes');
 
 	    skip "skipping RSA+DHE tests", 1
 		if $no_dh;
 
-	    ok(run(test(["ssltest", "-v", "-bio_pair", "-tls1", "-s_cert", srctop_file("apps","server2.pem"), "-dhe1024dsa", "-num", "10", "-f", "-time", @extra])),
+	    ok(run(test(["ssltest_old", "-v", "-bio_pair", "-tls1", "-s_cert", srctop_file("apps","server2.pem"), "-dhe1024dsa", "-num", "10", "-f", "-time", @extra])),
 	       'test tlsv1 with 1024bit RSA, 1024bit DHE, multiple handshakes');
 	  }
 
@@ -712,55 +715,6 @@ sub testssl {
 	}
     };
 
-    subtest 'TLS Version min/max tests' => sub {
-        my @protos;
-        push(@protos, "ssl3") unless $no_ssl3;
-        push(@protos, "tls1") unless $no_tls1;
-        push(@protos, "tls1.1") unless $no_tls1_1;
-        push(@protos, "tls1.2") unless $no_tls1_2;
-        my @minprotos = (undef, @protos);
-        my @maxprotos = (@protos, undef);
-        my @shdprotos = (@protos, $protos[$#protos]);
-        my $n = ((@protos+2) * (@protos+3))/2 - 2;
-        my $ntests = $n * $n;
-	plan tests => $ntests;
-      SKIP: {
-        skip "TLS disabled", 1 if $ntests == 1;
-
-        my $should;
-        for (my $smin = 0; $smin < @minprotos; ++$smin) {
-        for (my $smax = $smin ? $smin - 1 : 0; $smax < @maxprotos; ++$smax) {
-        for (my $cmin = 0; $cmin < @minprotos; ++$cmin) {
-        for (my $cmax = $cmin ? $cmin - 1 : 0; $cmax < @maxprotos; ++$cmax) {
-            if ($cmax < $smin-1) {
-                $should = "fail-server";
-            } elsif ($smax < $cmin-1) {
-                $should = "fail-client";
-            } elsif ($cmax > $smax) {
-                $should = $shdprotos[$smax];
-            } else {
-                $should = $shdprotos[$cmax];
-            }
-
-            my @args = @ssltest;
-            push(@args, "-should_negotiate", $should);
-            push(@args, "-server_min_proto", $minprotos[$smin])
-                if (defined($minprotos[$smin]));
-            push(@args, "-server_max_proto", $maxprotos[$smax])
-                if (defined($maxprotos[$smax]));
-            push(@args, "-client_min_proto", $minprotos[$cmin])
-                if (defined($minprotos[$cmin]));
-            push(@args, "-client_max_proto", $maxprotos[$cmax])
-                if (defined($maxprotos[$cmax]));
-            my $ok = run(test[@args]);
-            if (! $ok) {
-                print STDERR "\nsmin=$smin, smax=$smax, cmin=$cmin, cmax=$cmax\n";
-                print STDERR "\nFailed: @args\n";
-            }
-            ok($ok);
-        }}}}}
-    };
-
     subtest 'DTLS Version min/max tests' => sub {
         my @protos;
         push(@protos, "dtls1") unless ($no_dtls1 || $no_dtls);
@@ -857,20 +811,21 @@ sub testssl {
 	plan tests => 3;
 
       SKIP: {
-	  skip "Certificate Transparency is not supported by this OpenSSL build", 3
-	      if $no_ct;
-	  skip "TLSv1.0 is not supported by this OpenSSL build", 3
-	      if $no_tls1;
+        skip "Certificate Transparency is not supported by this OpenSSL build", 3
+            if $no_ct;
+        skip "TLSv1.0 is not supported by this OpenSSL build", 3
+            if $no_tls1;
 
-    $ENV{CTLOG_FILE} = srctop_file("test", "ct", "log_list.conf");
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-noct"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-requestct"])));
-	  # No SCTs provided, so this should fail.
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-requirect",
-	               "-should_negotiate", "fail-client"])));
-	}
+        $ENV{CTLOG_FILE} = srctop_file("test", "ct", "log_list.conf");
+        my @ca = qw(-CAfile certCA.ss);
+        ok(run(test([@ssltest, @ca, "-bio_pair", "-tls1", "-noct"])));
+        # No SCTs provided, so this should fail.
+        ok(run(test([@ssltest, @ca, "-bio_pair", "-tls1", "-ct",
+                     "-should_negotiate", "fail-client"])));
+        # No SCTs provided, unverified chains still succeed.
+        ok(run(test([@ssltest, "-bio_pair", "-tls1", "-ct"])));
+        }
     };
-
 }
 
 sub testsslproxy {
@@ -880,7 +835,7 @@ sub testsslproxy {
     my @CA = $CAtmp ? ("-CAfile", $CAtmp) : ("-CApath", bldtop_dir("certs"));
     my @extra = @_;
 
-    my @ssltest = ("ssltest",
+    my @ssltest = ("ssltest_old",
 		   "-s_key", $key, "-s_cert", $cert,
 		   "-c_key", $key, "-c_cert", $cert);
 
@@ -894,7 +849,7 @@ sub testsslproxy {
     # letters get combined into just "B".
     # The policy letter(s) then get filtered with the given auth letter
     # in the table below, and the result gets tested with the given
-    # condition.  For details, read ssltest.c
+    # condition.  For details, read ssltest_old.c
     #
     # certfilename => [ [ auth, cond, expected result ] ... ]
     my %expected = ( "certP1.ss" => [ [ [ 'A',  'A'      ], 1 ],

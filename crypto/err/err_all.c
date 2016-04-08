@@ -132,8 +132,12 @@ void err_load_crypto_strings_intern(void)
 # ifndef OPENSSL_NO_ENGINE
     ERR_load_ENGINE_strings();
 # endif
+# ifndef OPENSSL_NO_OCSP
     ERR_load_OCSP_strings();
+# endif
+#ifndef OPENSSL_NO_UI
     ERR_load_UI_strings();
+#endif
 # ifdef OPENSSL_FIPS
     ERR_load_FIPS_strings();
 # endif

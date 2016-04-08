@@ -408,12 +408,16 @@ int X509_signature_print(BIO *bp, X509_ALGOR *alg, ASN1_STRING *sig);
 
 int X509_sign(X509 *x, EVP_PKEY *pkey, const EVP_MD *md);
 int X509_sign_ctx(X509 *x, EVP_MD_CTX *ctx);
+# ifndef OPENSSL_NO_OCSP
 int X509_http_nbio(OCSP_REQ_CTX *rctx, X509 **pcert);
+# endif
 int X509_REQ_sign(X509_REQ *x, EVP_PKEY *pkey, const EVP_MD *md);
 int X509_REQ_sign_ctx(X509_REQ *x, EVP_MD_CTX *ctx);
 int X509_CRL_sign(X509_CRL *x, EVP_PKEY *pkey, const EVP_MD *md);
 int X509_CRL_sign_ctx(X509_CRL *x, EVP_MD_CTX *ctx);
+# ifndef OPENSSL_NO_OCSP
 int X509_CRL_http_nbio(OCSP_REQ_CTX *rctx, X509_CRL **pcrl);
+# endif
 int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *x, EVP_PKEY *pkey, const EVP_MD *md);
 
 int X509_pubkey_digest(const X509 *data, const EVP_MD *type,
@@ -696,6 +700,7 @@ int X509_REQ_get_signature_nid(const X509_REQ *req);
 int i2d_re_X509_REQ_tbs(X509_REQ *req, unsigned char **pp);
 int X509_REQ_set_pubkey(X509_REQ *x, EVP_PKEY *pkey);
 EVP_PKEY *X509_REQ_get_pubkey(X509_REQ *req);
+EVP_PKEY *X509_REQ_get0_pubkey(X509_REQ *req);
 X509_PUBKEY *X509_REQ_get_X509_PUBKEY(X509_REQ *req);
 int X509_REQ_extension_nid(int nid);
 int *X509_REQ_get_extension_nids(void);
@@ -1078,6 +1083,7 @@ void ERR_load_X509_strings(void);
 # define X509_F_X509_NAME_ONELINE                         116
 # define X509_F_X509_NAME_PRINT                           117
 # define X509_F_X509_PRINT_EX_FP                          118
+# define X509_F_X509_PUBKEY_DECODE                        148
 # define X509_F_X509_PUBKEY_GET0                          119
 # define X509_F_X509_PUBKEY_SET                           120
 # define X509_F_X509_REQ_CHECK_PRIVATE_KEY                144
