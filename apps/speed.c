@@ -1,59 +1,12 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
+/*
+ * Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
  *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.]
+ * Licensed under the OpenSSL license (the "License").  You may not use
+ * this file except in compliance with the License.  You can obtain a copy
+ * in the file LICENSE in the source distribution or at
+ * https://www.openssl.org/source/license.html
  */
+
 /* ====================================================================
  * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
  *
@@ -99,9 +52,7 @@
 #ifndef OPENSSL_NO_DES
 # include <openssl/des.h>
 #endif
-#ifndef OPENSSL_NO_AES
-# include <openssl/aes.h>
-#endif
+#include <openssl/aes.h>
 #ifndef OPENSSL_NO_CAMELLIA
 # include <openssl/camellia.h>
 #endif
@@ -249,7 +200,6 @@ static int RC4_loop(void *args);
 static int DES_ncbc_encrypt_loop(void *args);
 static int DES_ede3_cbc_encrypt_loop(void *args);
 #endif
-#ifndef OPENSSL_NO_AES
 static int AES_cbc_128_encrypt_loop(void *args);
 static int AES_cbc_192_encrypt_loop(void *args);
 static int AES_ige_128_encrypt_loop(void *args);
@@ -257,7 +207,6 @@ static int AES_cbc_256_encrypt_loop(void *args);
 static int AES_ige_192_encrypt_loop(void *args);
 static int AES_ige_256_encrypt_loop(void *args);
 static int CRYPTO_gcm128_aad_loop(void *args);
-#endif
 static int EVP_Update_loop(void *args);
 static int EVP_Digest_loop(void *args);
 #ifndef OPENSSL_NO_RSA
@@ -310,10 +259,9 @@ static double ecdsa_results[EC_NUM][2];
 static double ecdh_results[EC_NUM][1];
 #endif
 
-#if defined(OPENSSL_NO_DSA) && !defined(OPENSSL_NO_EC)
+#if !defined(OPENSSL_NO_DSA) || !defined(OPENSSL_NO_EC)
 static const char rnd_seed[] =
     "string to make the random number generator think it has entropy";
-static int rnd_fake = 0;
 #endif
 
 #ifdef SIGALRM
@@ -509,14 +457,12 @@ static OPT_PAIR doit_choices[] = {
     {"des-cbc", D_CBC_DES},
     {"des-ede3", D_EDE3_DES},
 #endif
-#ifndef OPENSSL_NO_AES
     {"aes-128-cbc", D_CBC_128_AES},
     {"aes-192-cbc", D_CBC_192_AES},
     {"aes-256-cbc", D_CBC_256_AES},
     {"aes-128-ige", D_IGE_128_AES},
     {"aes-192-ige", D_IGE_192_AES},
     {"aes-256-ige", D_IGE_256_AES},
-#endif
 #ifndef OPENSSL_NO_RC2
     {"rc2-cbc", D_CBC_RC2},
     {"rc2", D_CBC_RC2},
@@ -820,14 +766,9 @@ static int DES_ede3_cbc_encrypt_loop(void *args)
 }
 #endif
 
-#ifndef OPENSSL_NO_AES
-# define MAX_BLOCK_SIZE 128
-#else
-# define MAX_BLOCK_SIZE 64
-#endif
+#define MAX_BLOCK_SIZE 128
 
 static unsigned char iv[2 * MAX_BLOCK_SIZE / 8];
-#ifndef OPENSSL_NO_AES
 static AES_KEY aes_ks1, aes_ks2, aes_ks3;
 static int AES_cbc_128_encrypt_loop(void *args)
 {
@@ -914,8 +855,6 @@ static int CRYPTO_gcm128_aad_loop(void *args)
         CRYPTO_gcm128_aad(gcm_ctx, buf, lengths[testnum]);
     return count;
 }
-
-#endif
 
 static int decrypt = 0;
 static int EVP_Update_loop(void *args)
@@ -1174,7 +1113,7 @@ static int run_benchmark(int async_jobs, int (*loop_function)(void *), loopargs_
                 max_fd = job_fd;
         }
 
-        if (max_fd >= FD_SETSIZE) {
+        if (max_fd >= (OSSL_ASYNC_FD)FD_SETSIZE) {
             BIO_printf(bio_err,
                     "Error: max_fd (%d) must be smaller than FD_SETSIZE (%d). "
                     "Decrease the value of async_jobs\n",
@@ -1253,6 +1192,7 @@ static int run_benchmark(int async_jobs, int (*loop_function)(void *), loopargs_
 int speed_main(int argc, char **argv)
 {
     loopargs_t *loopargs = NULL;
+    int async_init = 0;
     int loopargs_len = 0;
     char *prog;
     const EVP_CIPHER *evp_cipher = NULL;
@@ -1295,7 +1235,6 @@ int speed_main(int argc, char **argv)
         0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
         0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x12
     };
-#ifndef OPENSSL_NO_AES
     static const unsigned char key24[24] = {
         0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
         0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x12,
@@ -1307,7 +1246,6 @@ int speed_main(int argc, char **argv)
         0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x12, 0x34,
         0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x12, 0x34, 0x56
     };
-#endif
 #ifndef OPENSSL_NO_CAMELLIA
     static const unsigned char ckey24[24] = {
         0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
@@ -1543,13 +1481,11 @@ int speed_main(int argc, char **argv)
             continue;
         }
 #endif
-#ifndef OPENSSL_NO_AES
         if (strcmp(*argv, "aes") == 0) {
             doit[D_CBC_128_AES] = doit[D_CBC_192_AES] =
                 doit[D_CBC_256_AES] = 1;
             continue;
         }
-#endif
 #ifndef OPENSSL_NO_CAMELLIA
         if (strcmp(*argv, "camellia") == 0) {
             doit[D_CBC_128_CML] = doit[D_CBC_192_CML] =
@@ -1583,7 +1519,8 @@ int speed_main(int argc, char **argv)
 
     /* Initialize the job pool if async mode is enabled */
     if (async_jobs > 0) {
-        if (!ASYNC_init_thread(async_jobs, async_jobs)) {
+        async_init = ASYNC_init_thread(async_jobs, async_jobs);
+        if (!async_init) {
             BIO_printf(bio_err, "Error creating the ASYNC job pool\n");
             goto end;
         }
@@ -1676,18 +1613,16 @@ int speed_main(int argc, char **argv)
     DES_set_key_unchecked(&key2, &sch2);
     DES_set_key_unchecked(&key3, &sch3);
 #endif
-#ifndef OPENSSL_NO_AES
     AES_set_encrypt_key(key16, 128, &aes_ks1);
     AES_set_encrypt_key(key24, 192, &aes_ks2);
     AES_set_encrypt_key(key32, 256, &aes_ks3);
-#endif
 #ifndef OPENSSL_NO_CAMELLIA
     Camellia_set_key(key16, 128, &camellia_ks1);
     Camellia_set_key(ckey24, 192, &camellia_ks2);
     Camellia_set_key(ckey32, 256, &camellia_ks3);
 #endif
 #ifndef OPENSSL_NO_IDEA
-    idea_set_encrypt_key(key16, &idea_ks);
+    IDEA_set_encrypt_key(key16, &idea_ks);
 #endif
 #ifndef OPENSSL_NO_SEED
     SEED_set_key(key16, &seed_ks);
@@ -2080,7 +2015,7 @@ int speed_main(int argc, char **argv)
         }
     }
 #endif
-#ifndef OPENSSL_NO_AES
+
     if (doit[D_CBC_128_AES]) {
         for (testnum = 0; testnum < SIZE_NUM; testnum++) {
             print_message(names[D_CBC_128_AES], c[D_CBC_128_AES][testnum],
@@ -2158,7 +2093,7 @@ int speed_main(int argc, char **argv)
         for (i = 0; i < loopargs_len; i++)
             CRYPTO_gcm128_release(loopargs[i].gcm_ctx);
     }
-#endif
+
 #ifndef OPENSSL_NO_CAMELLIA
     if (doit[D_CBC_128_CML]) {
         for (testnum = 0; testnum < SIZE_NUM; testnum++) {
@@ -2222,7 +2157,7 @@ int speed_main(int argc, char **argv)
             }
             Time_F(START);
             for (count = 0, run = 1; COND(c[D_CBC_IDEA][testnum]); count++)
-                idea_cbc_encrypt(loopargs[0].buf, loopargs[0].buf,
+                IDEA_cbc_encrypt(loopargs[0].buf, loopargs[0].buf,
                                  (unsigned long)lengths[testnum], &idea_ks,
                                  iv, IDEA_ENCRYPT);
             d = Time_F(STOP);
@@ -2448,7 +2383,6 @@ int speed_main(int argc, char **argv)
 #ifndef OPENSSL_NO_DSA
     if (RAND_status() != 1) {
         RAND_seed(rnd_seed, sizeof rnd_seed);
-        rnd_fake = 1;
     }
     for (testnum = 0; testnum < DSA_NUM; testnum++) {
         int st = 0;
@@ -2512,14 +2446,11 @@ int speed_main(int argc, char **argv)
                 dsa_doit[testnum] = 0;
         }
     }
-    if (rnd_fake)
-        RAND_cleanup();
 #endif
 
 #ifndef OPENSSL_NO_EC
     if (RAND_status() != 1) {
         RAND_seed(rnd_seed, sizeof rnd_seed);
-        rnd_fake = 1;
     }
     for (testnum = 0; testnum < EC_NUM; testnum++) {
         int st = 1;
@@ -2601,14 +2532,11 @@ int speed_main(int argc, char **argv)
             }
         }
     }
-    if (rnd_fake)
-        RAND_cleanup();
 #endif
 
 #ifndef OPENSSL_NO_EC
     if (RAND_status() != 1) {
         RAND_seed(rnd_seed, sizeof rnd_seed);
-        rnd_fake = 1;
     }
     for (testnum = 0; testnum < EC_NUM; testnum++) {
         if (!ecdh_doit[testnum])
@@ -2677,20 +2605,20 @@ int speed_main(int argc, char **argv)
                         break;
                     }
                 }
-                if (ecdh_checks != 0) {
-                    pkey_print_message("", "ecdh",
-                            ecdh_c[testnum][0],
-                            test_curves_bits[testnum], ECDH_SECONDS);
-                    Time_F(START);
-                    count = run_benchmark(async_jobs, ECDH_compute_key_loop, loopargs);
-                    d = Time_F(STOP);
-                    BIO_printf(bio_err,
-                            mr ? "+R7:%ld:%d:%.2f\n" :
-                            "%ld %d-bit ECDH ops in %.2fs\n", count,
-                            test_curves_bits[testnum], d);
-                    ecdh_results[testnum][0] = d / (double)count;
-                    rsa_count = count;
-                }
+            }
+            if (ecdh_checks != 0) {
+                pkey_print_message("", "ecdh",
+                        ecdh_c[testnum][0],
+                        test_curves_bits[testnum], ECDH_SECONDS);
+                Time_F(START);
+                count = run_benchmark(async_jobs, ECDH_compute_key_loop, loopargs);
+                d = Time_F(STOP);
+                BIO_printf(bio_err,
+                        mr ? "+R7:%ld:%d:%.2f\n" :
+                        "%ld %d-bit ECDH ops in %.2fs\n", count,
+                        test_curves_bits[testnum], d);
+                ecdh_results[testnum][0] = d / (double)count;
+                rsa_count = count;
             }
         }
 
@@ -2700,8 +2628,6 @@ int speed_main(int argc, char **argv)
                 ecdh_doit[testnum] = 0;
         }
     }
-    if (rnd_fake)
-        RAND_cleanup();
 #endif
 #ifndef NO_FORK
  show_res:
@@ -2720,11 +2646,9 @@ int speed_main(int argc, char **argv)
 #ifndef OPENSSL_NO_DES
         printf("%s ", DES_options());
 #endif
-#ifndef OPENSSL_NO_AES
         printf("%s ", AES_options());
-#endif
 #ifndef OPENSSL_NO_IDEA
-        printf("%s ", idea_options());
+        printf("%s ", IDEA_options());
 #endif
 #ifndef OPENSSL_NO_BF
         printf("%s ", BF_options());
@@ -2877,7 +2801,9 @@ int speed_main(int argc, char **argv)
     if (async_jobs > 0) {
         for (i = 0; i < loopargs_len; i++)
             ASYNC_WAIT_CTX_free(loopargs[i].wait_ctx);
+    }
 
+    if (async_init) {
         ASYNC_cleanup_thread();
     }
     OPENSSL_free(loopargs);
