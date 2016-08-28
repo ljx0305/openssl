@@ -10,20 +10,20 @@ certificate request or CRL version
 
  #include <openssl/x509.h>
 
- long X509_get_version(X509 *x);
+ long X509_get_version(const X509 *x);
  int X509_set_version(X509 *x, long version);
 
- long X509_REQ_get_version(X509_REQ *req);
+ long X509_REQ_get_version(const X509_REQ *req);
  int X509_REQ_set_version(X509_REQ *x, long version);
 
- long X509_CRL_get_version(X509_CRL *crl);
+ long X509_CRL_get_version(const X509_CRL *crl);
  int X509_CRL_set_version(X509_CRL *x, long version);
 
 =head1 DESCRIPTION
 
 X509_get_version() returns the numerical value of the version field of
 certificate B<x>. Note: this is defined by standards (X.509 et al) to be one
-less than the certificate version. So a verson 3 certificate will return 2 and
+less than the certificate version. So a version 3 certificate will return 2 and
 a version 1 certificate will return 0.
 
 X509_set_version() sets the numerical value of the version field of certificate

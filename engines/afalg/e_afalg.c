@@ -230,7 +230,15 @@ int afalg_fin_cipher_aio(afalg_aio *aio, int sfd, unsigned char *buf,
     memset(cb, '\0', sizeof(*cb));
     cb->aio_fildes = sfd;
     cb->aio_lio_opcode = IOCB_CMD_PREAD;
-    cb->aio_buf = (uint64_t)buf;
+    if (sizeof(buf) != sizeof(cb->aio_buf)) {
+        /*
+         * The pointer has to be converted to 32 bit unsigned value first
+         * to avoid sign extension on cast to 64 bit value
+         */
+        cb->aio_buf = (uint64_t)(unsigned long)buf;
+    } else {
+        cb->aio_buf = (uint64_t)buf;
+    }
     cb->aio_offset = 0;
     cb->aio_data = 0;
     cb->aio_nbytes = len;
@@ -731,6 +739,7 @@ static int afalg_chk_platform(void)
     int ret;
     int i;
     int kver[3] = { -1, -1, -1 };
+    int sock;
     char *str;
     struct utsname ut;
 
@@ -757,6 +766,14 @@ static int afalg_chk_platform(void)
                  AFALG_R_KERNEL_DOES_NOT_SUPPORT_ASYNC_AFALG);
         return 0;
     }
+
+    /* Test if we can actually create an AF_ALG socket */
+    sock = socket(AF_ALG, SOCK_SEQPACKET, 0);
+    if (sock == -1) {
+        AFALGerr(AFALG_F_AFALG_CHK_PLATFORM, AFALG_R_SOCKET_CREATE_FAILED);
+        return 0;
+    }
+    close(sock);
 
     return 1;
 }

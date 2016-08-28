@@ -269,7 +269,7 @@ enum UI_string_types {
 };
 
 /* Create and manipulate methods */
-UI_METHOD *UI_create_method(char *name);
+UI_METHOD *UI_create_method(const char *name);
 void UI_destroy_method(UI_METHOD *ui_method);
 int UI_method_set_opener(UI_METHOD *method, int (*opener) (UI *ui));
 int UI_method_set_writer(UI_METHOD *method,
@@ -334,7 +334,7 @@ int UI_UTIL_read_pw(char *buf, char *buff, int size, const char *prompt,
  * made after this point may be overwritten when the script is next run.
  */
 
-void ERR_load_UI_strings(void);
+int ERR_load_UI_strings(void);
 
 /* Error codes for the UI functions. */
 

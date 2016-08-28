@@ -29,6 +29,7 @@ static ERR_STRING_DATA BIO_str_functs[] = {
     {ERR_FUNC(BIO_F_BIO_CTRL), "BIO_ctrl"},
     {ERR_FUNC(BIO_F_BIO_GETS), "BIO_gets"},
     {ERR_FUNC(BIO_F_BIO_GET_HOST_IP), "BIO_get_host_ip"},
+    {ERR_FUNC(BIO_F_BIO_GET_NEW_INDEX), "BIO_get_new_index"},
     {ERR_FUNC(BIO_F_BIO_GET_PORT), "BIO_get_port"},
     {ERR_FUNC(BIO_F_BIO_LISTEN), "BIO_listen"},
     {ERR_FUNC(BIO_F_BIO_LOOKUP), "BIO_lookup"},
@@ -43,7 +44,6 @@ static ERR_STRING_DATA BIO_str_functs[] = {
     {ERR_FUNC(BIO_F_BIO_PARSE_HOSTSERV), "BIO_parse_hostserv"},
     {ERR_FUNC(BIO_F_BIO_PUTS), "BIO_puts"},
     {ERR_FUNC(BIO_F_BIO_READ), "BIO_read"},
-    {ERR_FUNC(BIO_F_BIO_SET), "BIO_set"},
     {ERR_FUNC(BIO_F_BIO_SOCKET), "BIO_socket"},
     {ERR_FUNC(BIO_F_BIO_SOCKET_NBIO), "BIO_socket_nbio"},
     {ERR_FUNC(BIO_F_BIO_SOCK_INFO), "BIO_sock_info"},
@@ -112,7 +112,7 @@ static ERR_STRING_DATA BIO_str_reasons[] = {
 
 #endif
 
-void ERR_load_BIO_strings(void)
+int ERR_load_BIO_strings(void)
 {
 #ifndef OPENSSL_NO_ERR
 
@@ -121,4 +121,5 @@ void ERR_load_BIO_strings(void)
         ERR_load_strings(0, BIO_str_reasons);
     }
 #endif
+    return 1;
 }

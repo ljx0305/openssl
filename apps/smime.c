@@ -120,8 +120,8 @@ int smime_main(int argc, char **argv)
     X509_VERIFY_PARAM *vpm = NULL;
     const EVP_CIPHER *cipher = NULL;
     const EVP_MD *sign_md = NULL;
-    char *CAfile = NULL, *CApath = NULL, *inrand = NULL;
-    char *certfile = NULL, *keyfile = NULL, *contfile = NULL, *prog;
+    const char *CAfile = NULL, *CApath = NULL, *prog = NULL;
+    char *certfile = NULL, *keyfile = NULL, *contfile = NULL, *inrand = NULL;
     char *infile = NULL, *outfile = NULL, *signerfile = NULL, *recipfile =
         NULL;
     char *passinarg = NULL, *passin = NULL, *to = NULL, *from =
@@ -275,7 +275,7 @@ int smime_main(int argc, char **argv)
                 goto opthelp;
             break;
         case OPT_INKEY:
-            /* If previous -inkey arument add signer to list */
+            /* If previous -inkey argument add signer to list */
             if (keyfile) {
                 if (signerfile == NULL) {
                     BIO_printf(bio_err,

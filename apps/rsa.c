@@ -29,8 +29,10 @@ typedef enum OPTION_choice {
     OPT_ERR = -1, OPT_EOF = 0, OPT_HELP,
     OPT_INFORM, OPT_OUTFORM, OPT_ENGINE, OPT_IN, OPT_OUT,
     OPT_PUBIN, OPT_PUBOUT, OPT_PASSOUT, OPT_PASSIN,
-    OPT_RSAPUBKEY_IN, OPT_RSAPUBKEY_OUT, OPT_PVK_STRONG, OPT_PVK_WEAK,
-    OPT_PVK_NONE, OPT_NOOUT, OPT_TEXT, OPT_MODULUS, OPT_CHECK, OPT_CIPHER
+    OPT_RSAPUBKEY_IN, OPT_RSAPUBKEY_OUT,
+    /* Do not change the order here; see case statements below */
+    OPT_PVK_NONE, OPT_PVK_WEAK, OPT_PVK_STRONG,
+    OPT_NOOUT, OPT_TEXT, OPT_MODULUS, OPT_CHECK, OPT_CIPHER
 } OPTION_CHOICE;
 
 OPTIONS rsa_options[] = {
@@ -50,10 +52,10 @@ OPTIONS rsa_options[] = {
     {"modulus", OPT_MODULUS, '-', "Print the RSA key modulus"},
     {"check", OPT_CHECK, '-', "Verify key consistency"},
     {"", OPT_CIPHER, '-', "Any supported cipher"},
-# ifdef OPENSSL_NO_RC4
-    {"pvk-strong", OPT_PVK_STRONG, '-'},
-    {"pvk-weak", OPT_PVK_WEAK, '-'},
-    {"pvk-none", OPT_PVK_NONE, '-'},
+# if !defined(OPENSSL_NO_DSA) && !defined(OPENSSL_NO_RC4)
+    {"pvk-strong", OPT_PVK_STRONG, '-', "Enable 'Strong' PVK encoding level (default)"},
+    {"pvk-weak", OPT_PVK_WEAK, '-', "Enable 'Weak' PVK encoding level"},
+    {"pvk-none", OPT_PVK_NONE, '-', "Don't enforce PVK encoding"},
 # endif
 # ifndef OPENSSL_NO_ENGINE
     {"engine", OPT_ENGINE, 's', "Use engine, possibly a hardware device"},
@@ -74,7 +76,7 @@ int rsa_main(int argc, char **argv)
     int noout = 0, modulus = 0, pubin = 0, pubout = 0, ret = 1;
 # if !defined(OPENSSL_NO_DSA) && !defined(OPENSSL_NO_RC4)
     int pvk_encr = 2;
-#endif
+# endif
     OPTION_CHOICE o;
 
     prog = opt_init(argc, argv, rsa_options);
@@ -124,22 +126,13 @@ int rsa_main(int argc, char **argv)
         case OPT_RSAPUBKEY_OUT:
             pubout = 2;
             break;
+        case OPT_PVK_STRONG:    /* pvk_encr:= 2 */
+        case OPT_PVK_WEAK:      /* pvk_encr:= 1 */
+        case OPT_PVK_NONE:      /* pvk_encr:= 0 */
 # if !defined(OPENSSL_NO_DSA) && !defined(OPENSSL_NO_RC4)
-        case OPT_PVK_STRONG:
-            pvk_encr = 2;
+            pvk_encr = (o - OPT_PVK_NONE);
+# endif
             break;
-        case OPT_PVK_WEAK:
-            pvk_encr = 1;
-            break;
-        case OPT_PVK_NONE:
-            pvk_encr = 0;
-            break;
-#else
-        case OPT_PVK_STRONG:
-        case OPT_PVK_WEAK:
-        case OPT_PVK_NONE:
-            break;
-#endif
         case OPT_NOOUT:
             noout = 1;
             break;
@@ -214,7 +207,7 @@ int rsa_main(int argc, char **argv)
     }
 
     if (modulus) {
-        BIGNUM *n;
+        const BIGNUM *n;
         RSA_get0_key(rsa, &n, NULL, NULL);
         BIO_printf(out, "Modulus=");
         BN_print(out, n);
@@ -237,10 +230,7 @@ int rsa_main(int argc, char **argv)
                            ERR_reason_error_string(err));
                 ERR_get_error(); /* remove e from error stack */
             }
-        }
-
-        /* should happen only if r == -1 */
-        if (r == -1 || ERR_peek_error() != 0) {
+        } else if (r == -1) {
             ERR_print_errors(bio_err);
             goto end;
         }

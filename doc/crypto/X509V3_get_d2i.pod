@@ -2,6 +2,7 @@
 
 =head1 NAME
 
+X509_get0_extensions, X509_CRL_get0_extensions, X509_REVOKED_get0_extensions,
 X509V3_get_d2i, X509V3_add1_i2d, X509V3_EXT_d2i, X509V3_EXT_i2d,
 X509_get_ext_d2i, X509_add1_ext_i2d, X509_CRL_get_ext_d2i,
 X509_CRL_add1_ext_i2d, X509_REVOKED_get_ext_d2i,
@@ -11,7 +12,7 @@ X509_REVOKED_add1_ext_i2d - X509 extension decode and encode functions
 
  #include <openssl/x509v3.h>
 
- void *X509V3_get_d2i(STACK_OF(X509_EXTENSION) *x, int nid, int *crit,
+ void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *x, int nid, int *crit,
                       int *idx);
  int X509V3_add1_i2d(STACK_OF(X509_EXTENSION) **x, int nid, void *value,
                      int crit, unsigned long flags);
@@ -19,21 +20,21 @@ X509_REVOKED_add1_ext_i2d - X509 extension decode and encode functions
  void *X509V3_EXT_d2i(X509_EXTENSION *ext);
  X509_EXTENSION *X509V3_EXT_i2d(int ext_nid, int crit, void *ext);
 
- void *X509_get_ext_d2i(X509 *x, int nid, int *crit, int *idx);
+ void *X509_get_ext_d2i(const X509 *x, int nid, int *crit, int *idx);
  int X509_add1_ext_i2d(X509 *x, int nid, void *value, int crit,
                        unsigned long flags);
 
- void *X509_CRL_get_ext_d2i(X509_CRL *crl, int nid, int *crit, int *idx);
+ void *X509_CRL_get_ext_d2i(const X509_CRL *crl, int nid, int *crit, int *idx);
  int X509_CRL_add1_ext_i2d(X509_CRL *crl, int nid, void *value, int crit,
                            unsigned long flags);
 
- void *X509_REVOKED_get_ext_d2i(X509_REVOKED *r, int nid, int *crit, int *idx);
+ void *X509_REVOKED_get_ext_d2i(const X509_REVOKED *r, int nid, int *crit, int *idx);
  int X509_REVOKED_add1_ext_i2d(X509_REVOKED *r, int nid, void *value, int crit,
                                unsigned long flags);
 
- STACK_OF(X509_EXTENSION) *X509_get0_extensions(const X509 *x);
- STACK_OF(X509_EXTENSION) *X509_CRL_get0_extensions(X509_CRL *crl);
- STACK_OF(X509_EXTENSION) *X509_REVOKED_get0_extensions(X509_REVOKED *r);
+ const STACK_OF(X509_EXTENSION) *X509_get0_extensions(const X509 *x);
+ const STACK_OF(X509_EXTENSION) *X509_CRL_get0_extensions(const X509_CRL *crl);
+ const STACK_OF(X509_EXTENSION) *X509_REVOKED_get0_extensions(const X509_REVOKED *r);
 
 =head1 DESCRIPTION
 
@@ -88,7 +89,7 @@ exist.
 B<X509V3_ADD_APPEND> appends a new extension, ignoring whether the extension
 already exists.
 
-B<X509V3_ADD_REPLACE> replaces an extension if it exists otherwise apppends
+B<X509V3_ADD_REPLACE> replaces an extension if it exists otherwise appends
 a new extension.
 
 B<X509V3_ADD_REPLACE_EXISTING> replaces an existing extension if it exists
@@ -98,7 +99,7 @@ B<X509V3_ADD_KEEP_EXISTING> appends a new extension only if the extension does
 not already exist. An error B<is not> returned if the extension does already
 exist.
 
-B<X509V3_ADD_DELETE> extension B<nid> is deleted: no new extenion is added.
+B<X509V3_ADD_DELETE> extension B<nid> is deleted: no new extension is added.
 
 If B<X509V3_ADD_SILENT> is ored with B<flags>: any error returned will not
 be added to the error queue.
@@ -206,7 +207,7 @@ cannot be encoded) or -1 due to a fatal error such as a memory allocation
 failure.
 
 X509_get0_extensions(), X509_CRL_get0_extensions() and
-X509_REVOKED_get0_extensions() return a stack of extensions. They can return
+X509_REVOKED_get0_extensions() return a stack of extensions. They return
 NULL if no extensions are present.
 
 =head1 SEE ALSO

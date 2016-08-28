@@ -94,7 +94,7 @@ static X509_EXTENSION *do_ext_nconf(CONF *conf, X509V3_CTX *ctx, int ext_nid,
             ERR_add_error_data(4, "name=", OBJ_nid2sn(ext_nid), ",section=",
                                value);
             if (*value != '@')
-                sk_CONF_VALUE_free(nval);
+                sk_CONF_VALUE_pop_free(nval, X509V3_conf_free);
             return NULL;
         }
         ext_struc = method->v2i(method, ctx, nval);
@@ -363,7 +363,7 @@ int X509V3_EXT_REQ_add_nconf(CONF *conf, X509V3_CTX *ctx, const char *section,
 
 /* Config database functions */
 
-char *X509V3_get_string(X509V3_CTX *ctx, char *name, char *section)
+char *X509V3_get_string(X509V3_CTX *ctx, const char *name, const char *section)
 {
     if (!ctx->db || !ctx->db_meth || !ctx->db_meth->get_string) {
         X509V3err(X509V3_F_X509V3_GET_STRING, X509V3_R_OPERATION_NOT_DEFINED);
@@ -374,7 +374,7 @@ char *X509V3_get_string(X509V3_CTX *ctx, char *name, char *section)
     return NULL;
 }
 
-STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx, char *section)
+STACK_OF(CONF_VALUE) *X509V3_get_section(X509V3_CTX *ctx, const char *section)
 {
     if (!ctx->db || !ctx->db_meth || !ctx->db_meth->get_section) {
         X509V3err(X509V3_F_X509V3_GET_SECTION,

@@ -178,14 +178,16 @@ int RSA_security_bits(const RSA *rsa);
 int RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d);
 int RSA_set0_factors(RSA *r, BIGNUM *p, BIGNUM *q);
 int RSA_set0_crt_params(RSA *r,BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp);
-void RSA_get0_key(const RSA *r, BIGNUM **n, BIGNUM **e, BIGNUM **d);
-void RSA_get0_factors(const RSA *r, BIGNUM **p, BIGNUM **q);
+void RSA_get0_key(const RSA *r,
+                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d);
+void RSA_get0_factors(const RSA *r, const BIGNUM **p, const BIGNUM **q);
 void RSA_get0_crt_params(const RSA *r,
-                         BIGNUM **dmp1, BIGNUM **dmq1, BIGNUM **iqmp);
+                         const BIGNUM **dmp1, const BIGNUM **dmq1,
+                         const BIGNUM **iqmp);
 void RSA_clear_flags(RSA *r, int flags);
 int RSA_test_flags(const RSA *r, int flags);
 void RSA_set_flags(RSA *r, int flags);
-ENGINE *RSA_get0_engine(RSA *r);
+ENGINE *RSA_get0_engine(const RSA *r);
 
 /* Deprecated version */
 DEPRECATEDIN_0_9_8(RSA *RSA_generate_key(int bits, unsigned long e, void
@@ -223,9 +225,6 @@ void RSA_set_default_method(const RSA_METHOD *meth);
 const RSA_METHOD *RSA_get_default_method(void);
 const RSA_METHOD *RSA_get_method(const RSA *rsa);
 int RSA_set_method(RSA *rsa, const RSA_METHOD *meth);
-
-/* This function needs the memory locking malloc callbacks to be installed */
-int RSA_memory_lock(RSA *r);
 
 /* these are the actual RSA functions */
 const RSA_METHOD *RSA_PKCS1_OpenSSL(void);
@@ -457,7 +456,7 @@ int RSA_meth_set_keygen(RSA_METHOD *rsa,
  * made after this point may be overwritten when the script is next run.
  */
 
-void ERR_load_RSA_strings(void);
+int ERR_load_RSA_strings(void);
 
 /* Error codes for the RSA functions. */
 
@@ -475,7 +474,6 @@ void ERR_load_RSA_strings(void);
 # define RSA_F_RSA_CHECK_KEY_EX                           160
 # define RSA_F_RSA_CMS_DECRYPT                            159
 # define RSA_F_RSA_ITEM_VERIFY                            148
-# define RSA_F_RSA_MEMORY_LOCK                            130
 # define RSA_F_RSA_METH_DUP                               161
 # define RSA_F_RSA_METH_NEW                               162
 # define RSA_F_RSA_METH_SET1_NAME                         163

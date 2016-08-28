@@ -33,12 +33,12 @@
 
 static int callb(int ok, X509_STORE_CTX *ctx);
 static int sign(X509 *x, EVP_PKEY *pkey, int days, int clrext,
-                const EVP_MD *digest, CONF *conf, char *section);
-static int x509_certify(X509_STORE *ctx, char *CAfile, const EVP_MD *digest,
+                const EVP_MD *digest, CONF *conf, const char *section);
+static int x509_certify(X509_STORE *ctx, const char *CAfile, const EVP_MD *digest,
                         X509 *x, X509 *xca, EVP_PKEY *pkey,
-                        STACK_OF(OPENSSL_STRING) *sigopts, char *serial,
+                        STACK_OF(OPENSSL_STRING) *sigopts, const char *serialfile,
                         int create, int days, int clrext, CONF *conf,
-                        char *section, ASN1_INTEGER *sno, int reqfile);
+                        const char *section, ASN1_INTEGER *sno, int reqfile);
 static int purpose_print(BIO *bio, X509 *cert, X509_PURPOSE *pt);
 
 typedef enum OPTION_choice {
@@ -261,6 +261,10 @@ int x509_main(int argc, char **argv)
             CAserial = opt_arg();
             break;
         case OPT_SET_SERIAL:
+            if (sno != NULL) {
+                BIO_printf(bio_err, "Serial number supplied twice\n");
+                goto opthelp;
+            }
             if ((sno = s2i_ASN1_INTEGER(NULL, opt_arg())) == NULL)
                 goto opthelp;
             break;
@@ -554,9 +558,9 @@ int x509_main(int argc, char **argv)
             goto end;
         if (!X509_set_subject_name(x, X509_REQ_get_subject_name(req)))
             goto end;
+        if (!set_cert_times(x, NULL, NULL, days))
+            goto end;
 
-        X509_gmtime_adj(X509_get_notBefore(x), 0);
-        X509_time_adj_ex(X509_get_notAfter(x), days, 0, NULL);
         if (fkey)
             X509_set_pubkey(x, fkey);
         else {
@@ -603,12 +607,19 @@ int x509_main(int argc, char **argv)
         objtmp = NULL;
     }
 
+    if (badsig) {
+        const ASN1_BIT_STRING *signature;
+
+        X509_get0_signature(&signature, NULL, x);
+        corrupt_signature(signature);
+    }
+
     if (num) {
         for (i = 1; i <= num; i++) {
             if (issuer == i) {
-                print_name(out, "issuer= ", X509_get_issuer_name(x), nmflag);
+                print_name(out, "issuer=", X509_get_issuer_name(x), nmflag);
             } else if (subject == i) {
-                print_name(out, "subject= ",
+                print_name(out, "subject=",
                            X509_get_subject_name(x), nmflag);
             } else if (serial == i) {
                 BIO_printf(out, "serial=");
@@ -684,14 +695,14 @@ int x509_main(int argc, char **argv)
                 BIO_printf(out, "Modulus=");
 #ifndef OPENSSL_NO_RSA
                 if (EVP_PKEY_id(pkey) == EVP_PKEY_RSA) {
-                    BIGNUM *n;
+                    const BIGNUM *n;
                     RSA_get0_key(EVP_PKEY_get0_RSA(pkey), &n, NULL, NULL);
                     BN_print(out, n);
                 } else
 #endif
 #ifndef OPENSSL_NO_DSA
                 if (EVP_PKEY_id(pkey) == EVP_PKEY_DSA) {
-                    BIGNUM *dsapub = NULL;
+                    const BIGNUM *dsapub = NULL;
                     DSA_get0_key(EVP_PKEY_get0_DSA(pkey), &dsapub, NULL);
                     BN_print(out, dsapub);
                 } else
@@ -739,11 +750,11 @@ int x509_main(int argc, char **argv)
                 X509_print_ex(out, x, nmflag, certflag);
             } else if (startdate == i) {
                 BIO_puts(out, "notBefore=");
-                ASN1_TIME_print(out, X509_get_notBefore(x));
+                ASN1_TIME_print(out, X509_get0_notBefore(x));
                 BIO_puts(out, "\n");
             } else if (enddate == i) {
                 BIO_puts(out, "notAfter=");
-                ASN1_TIME_print(out, X509_get_notAfter(x));
+                ASN1_TIME_print(out, X509_get0_notAfter(x));
                 BIO_puts(out, "\n");
             } else if (fingerprint == i) {
                 int j;
@@ -830,7 +841,7 @@ int x509_main(int argc, char **argv)
     if (checkend) {
         time_t tcheck = time(NULL) + checkoffset;
 
-        if (X509_cmp_time(X509_get_notAfter(x), &tcheck) < 0) {
+        if (X509_cmp_time(X509_get0_notAfter(x), &tcheck) < 0) {
             BIO_printf(out, "Certificate will expire\n");
             ret = 1;
         } else {
@@ -845,14 +856,6 @@ int x509_main(int argc, char **argv)
     if (noout || nocert) {
         ret = 0;
         goto end;
-    }
-
-    if (badsig) {
-        ASN1_BIT_STRING *signature;
-        unsigned char *s;
-        X509_get0_signature(&signature, NULL, x);
-        s = ASN1_STRING_data(signature);
-        s[ASN1_STRING_length(signature) - 1] ^= 0x1;
     }
 
     if (outformat == FORMAT_ASN1)
@@ -894,7 +897,7 @@ int x509_main(int argc, char **argv)
     return (ret);
 }
 
-static ASN1_INTEGER *x509_load_serial(char *CAfile, char *serialfile,
+static ASN1_INTEGER *x509_load_serial(const char *CAfile, const char *serialfile,
                                       int create)
 {
     char *buf = NULL, *p;
@@ -935,11 +938,11 @@ static ASN1_INTEGER *x509_load_serial(char *CAfile, char *serialfile,
     return bs;
 }
 
-static int x509_certify(X509_STORE *ctx, char *CAfile, const EVP_MD *digest,
+static int x509_certify(X509_STORE *ctx, const char *CAfile, const EVP_MD *digest,
                         X509 *x, X509 *xca, EVP_PKEY *pkey,
                         STACK_OF(OPENSSL_STRING) *sigopts,
-                        char *serialfile, int create,
-                        int days, int clrext, CONF *conf, char *section,
+                        const char *serialfile, int create,
+                        int days, int clrext, CONF *conf, const char *section,
                         ASN1_INTEGER *sno, int reqfile)
 {
     int ret = 0;
@@ -984,11 +987,7 @@ static int x509_certify(X509_STORE *ctx, char *CAfile, const EVP_MD *digest,
     if (!X509_set_serialNumber(x, bs))
         goto end;
 
-    if (X509_gmtime_adj(X509_get_notBefore(x), 0L) == NULL)
-        goto end;
-
-    /* hardwired expired */
-    if (X509_time_adj_ex(X509_get_notAfter(x), days, 0, NULL) == NULL)
+    if (!set_cert_times(x, NULL, NULL, days))
         goto end;
 
     if (clrext) {
@@ -1052,17 +1051,13 @@ static int callb(int ok, X509_STORE_CTX *ctx)
 
 /* self sign */
 static int sign(X509 *x, EVP_PKEY *pkey, int days, int clrext,
-                const EVP_MD *digest, CONF *conf, char *section)
+                const EVP_MD *digest, CONF *conf, const char *section)
 {
 
     if (!X509_set_issuer_name(x, X509_get_subject_name(x)))
         goto err;
-    if (X509_gmtime_adj(X509_get_notBefore(x), 0) == NULL)
+    if (!set_cert_times(x, NULL, NULL, days))
         goto err;
-
-    if (X509_time_adj_ex(X509_get_notAfter(x), days, 0, NULL) == NULL)
-        goto err;
-
     if (!X509_set_pubkey(x, pkey))
         goto err;
     if (clrext) {
@@ -1088,7 +1083,7 @@ static int sign(X509 *x, EVP_PKEY *pkey, int days, int clrext,
 static int purpose_print(BIO *bio, X509 *cert, X509_PURPOSE *pt)
 {
     int id, i, idret;
-    char *pname;
+    const char *pname;
     id = X509_PURPOSE_get_id(pt);
     pname = X509_PURPOSE_get0_name(pt);
     for (i = 0; i < 2; i++) {

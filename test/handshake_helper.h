@@ -15,30 +15,43 @@
 typedef struct handshake_result {
     ssl_test_result_t result;
     /* These alerts are in the 2-byte format returned by the info_callback. */
-    /* Alert sent by the client; 0 if no alert. */
+    /* (Latest) alert sent by the client; 0 if no alert. */
     int client_alert_sent;
-    /* Alert received by the server; 0 if no alert. */
+    /* Number of fatal or close_notify alerts sent. */
+    int client_num_fatal_alerts_sent;
+    /* (Latest) alert received by the server; 0 if no alert. */
     int client_alert_received;
-    /* Alert sent by the server; 0 if no alert. */
+    /* (Latest) alert sent by the server; 0 if no alert. */
     int server_alert_sent;
-    /* Alert received by the client; 0 if no alert. */
+    /* Number of fatal or close_notify alerts sent. */
+    int server_num_fatal_alerts_sent;
+    /* (Latest) alert received by the client; 0 if no alert. */
     int server_alert_received;
     /* Negotiated protocol. On success, these should always match. */
     int server_protocol;
     int client_protocol;
     /* Server connection */
-    int servername;
+    ssl_servername_t servername;
     /* Session ticket status */
-    int session_ticket;
+    ssl_session_ticket_t session_ticket;
     /* Was this called on the second context? */
     int session_ticket_do_not_call;
+    char *client_npn_negotiated;
+    char *server_npn_negotiated;
+    char *client_alpn_negotiated;
+    char *server_alpn_negotiated;
+    /* Was the handshake resumed? */
+    int client_resumed;
+    int server_resumed;
 } HANDSHAKE_RESULT;
 
-/* Do a handshake and report some information about the result. */
-HANDSHAKE_RESULT do_handshake(SSL_CTX *server_ctx, SSL_CTX *client_ctx,
-                              const SSL_TEST_CTX *test_ctx);
+HANDSHAKE_RESULT *HANDSHAKE_RESULT_new(void);
+void HANDSHAKE_RESULT_free(HANDSHAKE_RESULT *result);
 
-int do_not_call_session_ticket_callback(SSL* s, unsigned char* key_name, unsigned char *iv,
-                                        EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc);
+/* Do a handshake and report some information about the result. */
+HANDSHAKE_RESULT *do_handshake(SSL_CTX *server_ctx, SSL_CTX *server2_ctx,
+                               SSL_CTX *client_ctx, SSL_CTX *resume_server_ctx,
+                               SSL_CTX *resume_client_ctx,
+                               const SSL_TEST_CTX *test_ctx);
 
 #endif  /* HEADER_HANDSHAKE_HELPER_H */

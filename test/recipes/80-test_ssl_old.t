@@ -79,7 +79,7 @@ my $client_sess="client.ss";
 # new format in ssl_test.c and add recipes to 80-test_ssl_new.t instead.
 plan tests =>
     1				# For testss
-    + 14			# For the first testssl
+    +6  			# For the first testssl
     ;
 
 subtest 'test_ss' => sub {
@@ -331,7 +331,7 @@ sub testssl {
 
     subtest 'standard SSL tests' => sub {
 	######################################################################
-        plan tests => 21;
+      plan tests => 21;
 
       SKIP: {
 	  skip "SSLv3 is not supported by this OpenSSL build", 4
@@ -526,27 +526,6 @@ sub testssl {
 
     };
 
-    subtest 'Next Protocol Negotiation Tests' => sub {
-	######################################################################
-
-	plan tests => 7;
-
-      SKIP: {
-	  skip "TLSv1.0 is not supported by this OpenSSL build", 7
-	      if $no_tls1;
-	  skip "Next Protocol Negotiation is not supported by this OpenSSL build", 7
-	      if disabled("nextprotoneg");
-
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-npn_client"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-npn_server"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-npn_server_reject"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-npn_client", "-npn_server_reject"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-npn_client", "-npn_server"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-npn_client", "-npn_server", "-num", "2"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-npn_client", "-npn_server", "-num", "2", "-reuse"])));
-	}
-    };
-
     subtest 'Custom Extension tests' => sub {
 	######################################################################
 
@@ -579,73 +558,13 @@ sub testssl {
 	}
     };
 
-    subtest 'SNI tests' => sub {
-
-	plan tests => 7;
-
-      SKIP: {
-	  skip "TLSv1.x is not supported by this OpenSSL build", 7
-	      if $no_tls1 && $no_tls1_1 && $no_tls1_2;
-
-	  ok(run(test([@ssltest, "-bio_pair", "-sn_client", "foo"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-sn_server1", "foo"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-sn_client", "foo", "-sn_server1", "foo", "-sn_expect1"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-sn_client", "foo", "-sn_server1", "bar", "-sn_expect1"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-sn_client", "foo", "-sn_server1", "foo", "-sn_server2", "bar", "-sn_expect1"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-sn_client", "bar", "-sn_server1", "foo", "-sn_server2", "bar", "-sn_expect2"])));
-	  # Negative test - make sure it doesn't crash, and doesn't switch contexts
-	  ok(run(test([@ssltest, "-bio_pair", "-sn_client", "foobar", "-sn_server1", "foo", "-sn_server2", "bar", "-sn_expect1"])));
-	}
-    };
-
-    subtest 'ALPN tests' => sub {
-	######################################################################
-
-	plan tests => 13;
-
-      SKIP: {
-	  skip "TLSv1.0 is not supported by this OpenSSL build", 13
-	      if $no_tls1;
-
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-alpn_client", "foo"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-alpn_server", "foo"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-alpn_client", "foo", "-alpn_server", "foo", "-alpn_expected", "foo"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-alpn_client", "foo,bar", "-alpn_server", "foo", "-alpn_expected", "foo"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-alpn_client", "bar,foo", "-alpn_server", "foo", "-alpn_expected", "foo"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-alpn_client", "bar,foo", "-alpn_server", "foo,bar", "-alpn_expected", "foo"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-alpn_client", "bar,foo", "-alpn_server", "bar,foo", "-alpn_expected", "bar"])));
-	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-alpn_client", "foo,bar", "-alpn_server", "bar,foo", "-alpn_expected", "bar"])));
-
-	  is(run(test([@ssltest, "-bio_pair", "-tls1", "-alpn_client", "foo", "-alpn_server", "bar"])), 0,
-             "Testing ALPN with protocol mismatch, expecting failure");
-	  is(run(test([@ssltest, "-bio_pair", "-tls1", "-alpn_client", "baz", "-alpn_server", "bar,foo"])), 0,
-             "Testing ALPN with protocol mismatch, expecting failure");
-
-	  # ALPN + SNI
-	  ok(run(test([@ssltest, "-bio_pair",
-		       "-alpn_client", "foo,bar", "-sn_client", "alice",
-		       "-alpn_server1", "foo,123", "-sn_server1", "alice",
-		       "-alpn_server2", "bar,456", "-sn_server2", "bob",
-		       "-alpn_expected", "foo"])));
-	  ok(run(test([@ssltest, "-bio_pair",
-		       "-alpn_client", "foo,bar", "-sn_client", "bob",
-		       "-alpn_server1", "foo,123", "-sn_server1", "alice",
-		       "-alpn_server2", "bar,456", "-sn_server2", "bob",
-		       "-alpn_expected", "bar"])));
-	  ok(run(test([@ssltest, "-bio_pair",
-		       "-alpn_client", "foo,bar", "-sn_client", "bob",
-		       "-alpn_server2", "bar,456", "-sn_server2", "bob",
-		       "-alpn_expected", "bar"])));
-	}
-    };
-
     subtest 'SRP tests' => sub {
 
 	plan tests => 4;
 
       SKIP: {
 	  skip "skipping SRP tests", 4
-	      if $no_srp;
+	      if $no_srp || alldisabled(grep !/^ssl3/, available_protocols("tls"));
 
 	  ok(run(test([@ssltest, "-tls1", "-cipher", "SRP", "-srpuser", "test", "-srppass", "abc123"])),
 	     'test tls1 with SRP');
@@ -659,143 +578,6 @@ sub testssl {
 	  ok(run(test([@ssltest, "-bio_pair", "-tls1", "-cipher", "aSRP", "-srpuser", "test", "-srppass", "abc123"])),
 	     'test tls1 with SRP auth via BIO pair');
 	}
-    };
-
-    subtest 'Multi-buffer tests' => sub {
-	######################################################################
-
-	plan tests => 2;
-
-      SKIP: {
-	  skip "Neither SSLv3 nor any TLS version are supported by this OpenSSL build", 2
-	      if $no_anytls;
-
-	  skip "skipping multi-buffer tests", 2
-	      if (POSIX::uname())[4] ne "x86_64";
-
-	  ok(run(test([@ssltest, "-cipher", "AES128-SHA",    "-bytes", "8m"])));
-
-	  # We happen to know that AES128-SHA256 is TLSv1.2 only... for now.
-	  skip "TLSv1.2 is not supported by this OpenSSL configuration", 1
-	      if $no_tls1_2;
-
-	  ok(run(test([@ssltest, "-cipher", "AES128-SHA256", "-bytes", "8m"])));
-	}
-    };
-
-    subtest 'DTLS Version min/max tests' => sub {
-        my @protos;
-        push(@protos, "dtls1") unless ($no_dtls1 || $no_dtls);
-        push(@protos, "dtls1.2") unless ($no_dtls1_2 || $no_dtls);
-        my @minprotos = (undef, @protos);
-        my @maxprotos = (@protos, undef);
-        my @shdprotos = (@protos, $protos[$#protos]);
-        my $n = ((@protos+2) * (@protos+3))/2 - 2;
-        my $ntests = $n * $n;
-	plan tests => $ntests;
-      SKIP: {
-        skip "DTLS disabled", 1 if $ntests == 1;
-
-        my $should;
-        for (my $smin = 0; $smin < @minprotos; ++$smin) {
-        for (my $smax = $smin ? $smin - 1 : 0; $smax < @maxprotos; ++$smax) {
-        for (my $cmin = 0; $cmin < @minprotos; ++$cmin) {
-        for (my $cmax = $cmin ? $cmin - 1 : 0; $cmax < @maxprotos; ++$cmax) {
-            if ($cmax < $smin-1) {
-                $should = "fail-server";
-            } elsif ($smax < $cmin-1) {
-                $should = "fail-client";
-            } elsif ($cmax > $smax) {
-                $should = $shdprotos[$smax];
-            } else {
-                $should = $shdprotos[$cmax];
-            }
-
-            my @args = (@ssltest, "-dtls");
-            push(@args, "-should_negotiate", $should);
-            push(@args, "-server_min_proto", $minprotos[$smin])
-                if (defined($minprotos[$smin]));
-            push(@args, "-server_max_proto", $maxprotos[$smax])
-                if (defined($maxprotos[$smax]));
-            push(@args, "-client_min_proto", $minprotos[$cmin])
-                if (defined($minprotos[$cmin]));
-            push(@args, "-client_max_proto", $maxprotos[$cmax])
-                if (defined($maxprotos[$cmax]));
-            my $ok = run(test[@args]);
-            if (! $ok) {
-                print STDERR "\nsmin=$smin, smax=$smax, cmin=$cmin, cmax=$cmax\n";
-                print STDERR "\nFailed: @args\n";
-            }
-            ok($ok);
-        }}}}}
-    };
-
-    subtest 'TLS session reuse' => sub {
-        plan tests => 12;
-
-        SKIP: {
-            skip "TLS1.1 or TLS1.2 disabled", 12 if $no_tls1_1 || $no_tls1_2;
-            ok(run(test([@ssltest, "-server_sess_out", $server_sess, "-client_sess_out", $client_sess])));
-            ok(run(test([@ssltest, "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "1", "-should_negotiate", "tls1.2"])));
-            ok(run(test([@ssltest, "-server_max_proto", "tls1.1", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "0", "-should_negotiate", "tls1.1"])));
-
-            ok(run(test([@ssltest, "-server_max_proto", "tls1.1", "-server_sess_out", $server_sess, "-client_sess_out", $client_sess])));
-            ok(run(test([@ssltest, "-server_max_proto", "tls1.1", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "1", "-should_negotiate", "tls1.1"])));
-            ok(run(test([@ssltest, "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "0", "-should_negotiate", "tls1.2"])));
-
-            ok(run(test([@ssltest, "-no_ticket", "-server_sess_out", $server_sess, "-client_sess_out", $client_sess])));
-            ok(run(test([@ssltest, "-no_ticket", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "1", "-should_negotiate", "tls1.2"])));
-            ok(run(test([@ssltest, "-no_ticket", "-server_max_proto", "tls1.1", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "0", "-should_negotiate", "tls1.1"])));
-
-            ok(run(test([@ssltest, "-no_ticket", "-server_max_proto", "tls1.1", "-server_sess_out", $server_sess, "-client_sess_out", $client_sess])));
-            ok(run(test([@ssltest, "-no_ticket", "-server_max_proto", "tls1.1", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "1", "-should_negotiate", "tls1.1"])));
-            ok(run(test([@ssltest, "-no_ticket", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "0", "-should_negotiate", "tls1.2"])));
-        }
-    };
-
-    subtest 'DTLS session reuse' => sub {
-        plan tests => 12;
-      SKIP: {
-        skip "DTLS1.0 or DTLS1.2 disabled", 12 if $no_dtls1 || $no_dtls1_2;
-
-        ok(run(test([@ssltest, "-dtls", "-server_sess_out", $server_sess, "-client_sess_out", $client_sess])));
-        ok(run(test([@ssltest, "-dtls", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "1", "-should_negotiate", "dtls1.2"])));
-        ok(run(test([@ssltest, "-dtls", "-server_max_proto", "dtls1", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "0", "-should_negotiate", "dtls1"])));
-
-        ok(run(test([@ssltest, "-dtls", "-server_max_proto", "dtls1", "-server_sess_out", $server_sess, "-client_sess_out", $client_sess])));
-        ok(run(test([@ssltest, "-dtls", "-server_max_proto", "dtls1", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "1", "-should_negotiate", "dtls1"])));
-        ok(run(test([@ssltest, "-dtls", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "0", "-should_negotiate", "dtls1.2"])));
-
-        ok(run(test([@ssltest, "-dtls", "-no_ticket", "-server_sess_out", $server_sess, "-client_sess_out", $client_sess])));
-        ok(run(test([@ssltest, "-dtls", "-no_ticket", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "1", "-should_negotiate", "dtls1.2"])));
-        ok(run(test([@ssltest, "-dtls", "-no_ticket", "-server_max_proto", "dtls1", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "0", "-should_negotiate", "dtls1"])));
-
-        ok(run(test([@ssltest, "-dtls", "-no_ticket", "-server_max_proto", "dtls1", "-server_sess_out", $server_sess, "-client_sess_out", $client_sess])));
-        ok(run(test([@ssltest, "-dtls", "-no_ticket", "-server_max_proto", "dtls1", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "1", "-should_negotiate", "dtls1"])));
-        ok(run(test([@ssltest, "-dtls", "-no_ticket", "-server_sess_in", $server_sess, "-client_sess_in", $client_sess, "-should_reuse", "0", "-should_negotiate", "dtls1.2"])));
-	}
-    };
-
-    subtest 'Certificate Transparency tests' => sub {
-	######################################################################
-
-	plan tests => 3;
-
-      SKIP: {
-        skip "Certificate Transparency is not supported by this OpenSSL build", 3
-            if $no_ct;
-        skip "TLSv1.0 is not supported by this OpenSSL build", 3
-            if $no_tls1;
-
-        $ENV{CTLOG_FILE} = srctop_file("test", "ct", "log_list.conf");
-        my @ca = qw(-CAfile certCA.ss);
-        ok(run(test([@ssltest, @ca, "-bio_pair", "-tls1", "-noct"])));
-        # No SCTs provided, so this should fail.
-        ok(run(test([@ssltest, @ca, "-bio_pair", "-tls1", "-ct",
-                     "-should_negotiate", "fail-client"])));
-        # No SCTs provided, unverified chains still succeed.
-        ok(run(test([@ssltest, "-bio_pair", "-tls1", "-ct"])));
-        }
     };
 }
 

@@ -35,7 +35,7 @@ static void x509_name_ex_free(ASN1_VALUE **val, const ASN1_ITEM *it);
 
 static int x509_name_encode(X509_NAME *a);
 static int x509_name_canon(X509_NAME *a);
-static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in);
+static int asn1_string_canon(ASN1_STRING *out, const ASN1_STRING *in);
 static int i2d_name_canon(STACK_OF(STACK_OF_X509_NAME_ENTRY) * intname,
                           unsigned char **in);
 
@@ -173,12 +173,26 @@ static int x509_name_ex_d2i(ASN1_VALUE **val,
         for (j = 0; j < sk_X509_NAME_ENTRY_num(entries); j++) {
             entry = sk_X509_NAME_ENTRY_value(entries, j);
             entry->set = i;
-            if (!sk_X509_NAME_ENTRY_push(nm.x->entries, entry))
+            if (!sk_X509_NAME_ENTRY_push(nm.x->entries, entry)) {
+                /*
+                 * Free all in entries if sk_X509_NAME_ENTRY_push return failure.
+                 * X509_NAME_ENTRY_free will check the null entry.
+                 */
+                sk_X509_NAME_ENTRY_pop_free(entries, X509_NAME_ENTRY_free);
                 goto err;
+            }
+            /*
+             * If sk_X509_NAME_ENTRY_push return success, clean the entries[j].
+             * It's necessary when 'goto err;' happens.
+             */
+            sk_X509_NAME_ENTRY_set(entries, j, NULL);
         }
         sk_X509_NAME_ENTRY_free(entries);
+        sk_STACK_OF_X509_NAME_ENTRY_set(intname.s, i, NULL);
     }
+
     sk_STACK_OF_X509_NAME_ENTRY_free(intname.s);
+    intname.s = NULL;
     ret = x509_name_canon(nm.x);
     if (!ret)
         goto err;
@@ -186,8 +200,10 @@ static int x509_name_ex_d2i(ASN1_VALUE **val,
     *val = nm.a;
     *in = p;
     return ret;
+
  err:
     X509_NAME_free(nm.x);
+    sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname.s, sk_X509_NAME_ENTRY_free);
     ASN1err(ASN1_F_X509_NAME_EX_D2I, ERR_R_NESTED_ASN1_ERROR);
     return 0;
 }
@@ -274,7 +290,7 @@ static int x509_name_ex_print(BIO *out, ASN1_VALUE **pval,
                               int indent,
                               const char *fname, const ASN1_PCTX *pctx)
 {
-    if (X509_NAME_print_ex(out, (X509_NAME *)*pval,
+    if (X509_NAME_print_ex(out, (const X509_NAME *)*pval,
                            indent, pctx->nm_flags) <= 0)
         return 0;
     return 2;
@@ -322,6 +338,8 @@ static int x509_name_canon(X509_NAME *a)
         if (tmpentry == NULL)
             goto err;
         tmpentry->object = OBJ_dup(entry->object);
+        if (tmpentry->object == NULL)
+            goto err;
         if (!asn1_string_canon(tmpentry->value, entry->value))
             goto err;
         if (!sk_X509_NAME_ENTRY_push(entries, tmpentry))
@@ -362,7 +380,7 @@ static int x509_name_canon(X509_NAME *a)
         | B_ASN1_PRINTABLESTRING | B_ASN1_T61STRING | B_ASN1_IA5STRING \
         | B_ASN1_VISIBLESTRING)
 
-static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in)
+static int asn1_string_canon(ASN1_STRING *out, const ASN1_STRING *in)
 {
     unsigned char *to, *from;
     int len, i;
@@ -476,7 +494,7 @@ int X509_NAME_set(X509_NAME **xn, X509_NAME *name)
     return (*xn != NULL);
 }
 
-int X509_NAME_print(BIO *bp, X509_NAME *name, int obase)
+int X509_NAME_print(BIO *bp, const X509_NAME *name, int obase)
 {
     char *s, *c, *b;
     int l, i;
@@ -532,8 +550,8 @@ int X509_NAME_print(BIO *bp, X509_NAME *name, int obase)
     return 0;
 }
 
-int X509_NAME_get0_der(const unsigned char **pder, size_t *pderlen,
-                       X509_NAME *nm)
+int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **pder,
+                       size_t *pderlen)
 {
     /* Make sure encoding is valid */
     if (i2d_X509_NAME(nm, NULL) <= 0)

@@ -40,9 +40,8 @@ int TS_OBJ_print_bio(BIO *bio, const ASN1_OBJECT *obj)
 {
     char obj_txt[128];
 
-    int len = OBJ_obj2txt(obj_txt, sizeof(obj_txt), obj, 0);
-    BIO_write(bio, obj_txt, len);
-    BIO_write(bio, "\n", 1);
+    OBJ_obj2txt(obj_txt, sizeof(obj_txt), obj, 0);
+    BIO_printf(bio, "%s\n", obj_txt);
 
     return 1;
 }
@@ -86,7 +85,7 @@ int TS_MSG_IMPRINT_print_bio(BIO *bio, TS_MSG_IMPRINT *a)
 
     BIO_printf(bio, "Message data:\n");
     msg = a->hashed_msg;
-    BIO_dump_indent(bio, (const char *)ASN1_STRING_data(msg),
+    BIO_dump_indent(bio, (const char *)ASN1_STRING_get0_data(msg),
                     ASN1_STRING_length(msg), 4);
 
     return 1;

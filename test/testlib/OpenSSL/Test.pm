@@ -16,7 +16,8 @@ use Exporter;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 $VERSION = "0.8";
 @ISA = qw(Exporter);
-@EXPORT = (@Test::More::EXPORT, qw(setup indir app perlapp test perltest run));
+@EXPORT = (@Test::More::EXPORT, qw(setup indir app fuzz  perlapp test perltest
+                                   run));
 @EXPORT_OK = (@Test::More::EXPORT_OK, qw(bldtop_dir bldtop_file
                                          srctop_dir srctop_file
                                          pipe with cmdstr quotify));
@@ -283,6 +284,13 @@ sub app {
     my %opts = @_;
     return sub { my $num = shift;
 		 return __build_cmd($num, \&__apps_file, $cmd, %opts); }
+}
+
+sub fuzz {
+    my $cmd = shift;
+    my %opts = @_;
+    return sub { my $num = shift;
+		 return __build_cmd($num, \&__fuzz_file, $cmd, %opts); }
 }
 
 sub test {
@@ -701,6 +709,8 @@ sub __env {
     $directories{BLDTOP}  = $ENV{BLDTOP} || $ENV{TOP};
     $directories{BLDAPPS} = $ENV{BIN_D}  || __bldtop_dir("apps");
     $directories{SRCAPPS} =                 __srctop_dir("apps");
+    $directories{BLDFUZZ} =                 __bldtop_dir("fuzz");
+    $directories{SRCFUZZ} =                 __srctop_dir("fuzz");
     $directories{BLDTEST} = $ENV{TEST_D} || __bldtop_dir("test");
     $directories{SRCTEST} =                 __srctop_dir("test");
     $directories{RESULTS} = $ENV{RESULT_D} || $directories{BLDTEST};
@@ -778,6 +788,15 @@ sub __apps_file {
     return $f;
 }
 
+sub __fuzz_file {
+    BAIL_OUT("Must run setup() first") if (! $test_name);
+
+    my $f = pop;
+    $f = catfile($directories{BLDFUZZ},@_,$f . __exeext());
+    $f = catfile($directories{SRCFUZZ},@_,$f) unless -x $f;
+    return $f;
+}
+
 sub __perlapps_file {
     BAIL_OUT("Must run setup() first") if (! $test_name);
 
@@ -821,12 +840,10 @@ sub __cwd {
 	mkpath($dir);
     }
 
-    # Should we just bail out here as well?  I'm unsure.
-    return undef unless chdir($dir);
-
-    if ($opts{cleanup}) {
-	rmtree(".", { safe => 0, keep_root => 1 });
-    }
+    # We are recalculating the directories we keep track of, but need to save
+    # away the result for after having moved into the new directory.
+    my %tmp_directories = ();
+    my %tmp_ENV = ();
 
     # For each of these directory variables, figure out where they are relative
     # to the directory we want to move to if they aren't absolute (if they are,
@@ -835,7 +852,7 @@ sub __cwd {
     foreach (@dirtags) {
 	if (!file_name_is_absolute($directories{$_})) {
 	    my $newpath = abs2rel(rel2abs($directories{$_}), rel2abs($dir));
-	    $directories{$_} = $newpath;
+	    $tmp_directories{$_} = $newpath;
 	}
     }
 
@@ -845,8 +862,25 @@ sub __cwd {
     foreach (@direnv) {
 	if (!file_name_is_absolute($ENV{$_})) {
 	    my $newpath = abs2rel(rel2abs($ENV{$_}), rel2abs($dir));
-	    $ENV{$_} = $newpath;
+	    $tmp_ENV{$_} = $newpath;
 	}
+    }
+
+    # Should we just bail out here as well?  I'm unsure.
+    return undef unless chdir($dir);
+
+    if ($opts{cleanup}) {
+	rmtree(".", { safe => 0, keep_root => 1 });
+    }
+
+    # We put back new values carefully.  Doing the obvious
+    # %directories = ( %tmp_irectories )
+    # will clear out any value that happens to be an absolute path
+    foreach (keys %tmp_directories) {
+        $directories{$_} = $tmp_directories{$_};
+    }
+    foreach (keys %tmp_ENV) {
+        $ENV{$_} = $tmp_ENV{$_};
     }
 
     if ($debug) {

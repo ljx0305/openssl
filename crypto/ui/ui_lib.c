@@ -127,8 +127,10 @@ static int general_allocate_string(UI *ui, const char *prompt,
             s->_.string_data.test_buf = test_buf;
             ret = sk_UI_STRING_push(ui->strings, s);
             /* sk_push() returns 0 on error.  Let's adapt that */
-            if (ret <= 0)
+            if (ret <= 0) {
                 ret--;
+                free_string(s);
+            }
         } else
             free_string(s);
     }
@@ -172,8 +174,10 @@ static int general_allocate_boolean(UI *ui,
                 /*
                  * sk_push() returns 0 on error. Let's adapt that
                  */
-                if (ret <= 0)
+                if (ret <= 0) {
                     ret--;
+                    free_string(s);
+                }
             } else
                 free_string(s);
         }
@@ -532,7 +536,7 @@ const UI_METHOD *UI_set_method(UI *ui, const UI_METHOD *meth)
     return ui->meth;
 }
 
-UI_METHOD *UI_create_method(char *name)
+UI_METHOD *UI_create_method(const char *name)
 {
     UI_METHOD *ui_method = OPENSSL_zalloc(sizeof(*ui_method));
 

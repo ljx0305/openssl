@@ -25,7 +25,6 @@
 # include <openssl/txt_db.h>
 # include <openssl/engine.h>
 # include <openssl/ocsp.h>
-# include <openssl/ossl_typ.h>
 # include <signal.h>
 
 # if defined(OPENSSL_SYS_WIN32) || defined(OPENSSL_SYS_WINCE)
@@ -71,6 +70,10 @@ void wait_for_async(SSL *s);
 int has_stdin_waiting(void);
 # endif
 
+void corrupt_signature(const ASN1_STRING *signature);
+int set_cert_times(X509 *x, const char *startdate, const char *enddate,
+                   int days);
+
 /*
  * Common verification options.
  */
@@ -85,7 +88,7 @@ int has_stdin_waiting(void);
         OPT_V_POLICY_PRINT, OPT_V_CHECK_SS_SIG, OPT_V_TRUSTED_FIRST, \
         OPT_V_SUITEB_128_ONLY, OPT_V_SUITEB_128, OPT_V_SUITEB_192, \
         OPT_V_PARTIAL_CHAIN, OPT_V_NO_ALT_CHAINS, OPT_V_NO_CHECK_TIME, \
-        OPT_V_VERIFY_AUTH_LEVEL, \
+        OPT_V_VERIFY_AUTH_LEVEL, OPT_V_ALLOW_PROXY_CERTS, \
         OPT_V__LAST
 
 # define OPT_V_OPTIONS \
@@ -113,9 +116,9 @@ int has_stdin_waiting(void);
         { "explicit_policy", OPT_V_EXPLICIT_POLICY, '-', \
             "set policy variable require-explicit-policy"}, \
         { "inhibit_any", OPT_V_INHIBIT_ANY, '-', \
-            "set policy variable inihibit-any-policy"}, \
+            "set policy variable inhibit-any-policy"}, \
         { "inhibit_map", OPT_V_INHIBIT_MAP, '-', \
-            "set policy variable inihibit-policy-mapping"}, \
+            "set policy variable inhibit-policy-mapping"}, \
         { "x509_strict", OPT_V_X509_STRICT, '-', \
             "disable certificate compatibility work-arounds"}, \
         { "extended_crl", OPT_V_EXTENDED_CRL, '-', \
@@ -135,7 +138,8 @@ int has_stdin_waiting(void);
         { "partial_chain", OPT_V_PARTIAL_CHAIN, '-', \
             "accept chains anchored by intermediate trust-store CAs"}, \
         { "no_alt_chains", OPT_V_NO_ALT_CHAINS, '-', "(deprecated)" }, \
-        { "no_check_time", OPT_V_NO_CHECK_TIME, '-', "ignore certificate validity time" }
+        { "no_check_time", OPT_V_NO_CHECK_TIME, '-', "ignore certificate validity time" }, \
+        { "allow_proxy_certs", OPT_V_ALLOW_PROXY_CERTS, '-', "allow the use of proxy certificates" }
 
 # define OPT_V_CASES \
         OPT_V__FIRST: case OPT_V__LAST: break; \
@@ -167,7 +171,8 @@ int has_stdin_waiting(void);
         case OPT_V_SUITEB_192: \
         case OPT_V_PARTIAL_CHAIN: \
         case OPT_V_NO_ALT_CHAINS: \
-        case OPT_V_NO_CHECK_TIME
+        case OPT_V_NO_CHECK_TIME: \
+        case OPT_V_ALLOW_PROXY_CERTS
 
 /*
  * Common "extended"? options.
@@ -187,7 +192,7 @@ int has_stdin_waiting(void);
         { "xcertform", OPT_X_CERTFORM, 'F', \
             "format of Extended certificate (PEM or DER) PEM default " }, \
         { "xkeyform", OPT_X_KEYFORM, 'F', \
-            "format of Exnteded certificate's key (PEM or DER) PEM default"}
+            "format of Extended certificate's key (PEM or DER) PEM default"}
 
 # define OPT_X_CASES \
         OPT_X__FIRST: case OPT_X__LAST: break; \
@@ -271,6 +276,10 @@ int has_stdin_waiting(void);
         case OPT_S_CIPHER: \
         case OPT_S_DHPARAM: \
         case OPT_S_DEBUGBROKE
+
+#define IS_NO_PROT_FLAG(o) \
+ (o == OPT_S_NOSSL3 || o == OPT_S_NOTLS1 || o == OPT_S_NOTLS1_1 \
+  || o == OPT_S_NOTLS1_2)
 
 /*
  * Option parsing.
@@ -361,6 +370,11 @@ typedef struct args_st {
  * can be re-used.
  */
 char **copy_argv(int *argc, char *argv[]);
+/*
+ * Win32-specific argv initialization that splits OS-supplied UNICODE
+ * command line string to array of UTF8-encoded strings.
+ */
+void win32_utf8argv(int *argc, char **argv[]);
 
 
 # define PW_MIN_LENGTH 4
@@ -380,13 +394,14 @@ int dump_cert_text(BIO *out, X509 *x);
 void print_name(BIO *out, const char *title, X509_NAME *nm,
                 unsigned long lflags);
 # endif
-void print_bignum_var(BIO *, BIGNUM *, const char*, int, unsigned char *);
+void print_bignum_var(BIO *, const BIGNUM *, const char*,
+                      int, unsigned char *);
 void print_array(BIO *, const char *, int, const unsigned char *);
 int set_cert_ex(unsigned long *flags, const char *arg);
 int set_name_ex(unsigned long *flags, const char *arg);
 int set_ext_copy(int *copy_type, const char *arg);
 int copy_extensions(X509 *x, X509_REQ *req, int copy_type);
-int app_passwd(char *arg1, char *arg2, char **pass1, char **pass2);
+int app_passwd(const char *arg1, const char *arg2, char **pass1, char **pass2);
 int add_oid_section(CONF *conf);
 X509 *load_cert(const char *file, int format, const char *cert_descrip);
 X509_CRL *load_crl(const char *infile, int format);
@@ -398,7 +413,7 @@ int load_certs(const char *file, STACK_OF(X509) **certs, int format,
                const char *pass, const char *cert_descrip);
 int load_crls(const char *file, STACK_OF(X509_CRL) **crls, int format,
               const char *pass, const char *cert_descrip);
-X509_STORE *setup_verify(char *CAfile, char *CApath,
+X509_STORE *setup_verify(const char *CAfile, const char *CApath,
                          int noCAfile, int noCApath);
 __owur int ctx_set_verify_locations(SSL_CTX *ctx, const char *CAfile,
                                     const char *CApath, int noCAfile,
@@ -454,12 +469,13 @@ typedef struct ca_db_st {
 } CA_DB;
 
 void* app_malloc(int sz, const char *what);
-BIGNUM *load_serial(char *serialfile, int create, ASN1_INTEGER **retai);
-int save_serial(char *serialfile, char *suffix, BIGNUM *serial,
+BIGNUM *load_serial(const char *serialfile, int create, ASN1_INTEGER **retai);
+int save_serial(const char *serialfile, const char *suffix, const BIGNUM *serial,
                 ASN1_INTEGER **retai);
-int rotate_serial(char *serialfile, char *new_suffix, char *old_suffix);
+int rotate_serial(const char *serialfile, const char *new_suffix,
+                  const char *old_suffix);
 int rand_serial(BIGNUM *b, ASN1_INTEGER *ai);
-CA_DB *load_index(char *dbfile, DB_ATTR *dbattr);
+CA_DB *load_index(const char *dbfile, DB_ATTR *dbattr);
 int index_index(CA_DB *db);
 int save_index(const char *dbfile, const char *suffix, CA_DB *db);
 int rotate_index(const char *dbfile, const char *new_suffix,
@@ -539,11 +555,14 @@ int raw_write_stdout(const void *, int);
 # define TM_STOP         1
 double app_tminterval(int stop, int usertime);
 
-/* this is an accident waiting to happen (-Wshadow is your friend) */
-extern int verify_depth;
-extern int verify_quiet;
-extern int verify_error;
-extern int verify_return_error;
+typedef struct verify_options_st {
+    int depth;
+    int quiet;
+    int error;
+    int return_error;
+} VERIFY_CB_ARGS;
+
+extern VERIFY_CB_ARGS verify_args;
 
 # include "progs.h"
 

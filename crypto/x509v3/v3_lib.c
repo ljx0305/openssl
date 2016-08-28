@@ -203,7 +203,7 @@ void *X509V3_EXT_d2i(X509_EXTENSION *ext)
     if ((method = X509V3_EXT_get(ext)) == NULL)
         return NULL;
     extvalue = X509_EXTENSION_get_data(ext);
-    p = ASN1_STRING_data(extvalue);
+    p = ASN1_STRING_get0_data(extvalue);
     extlen = ASN1_STRING_length(extvalue);
     if (method->it)
         return ASN1_item_d2i(NULL, &p, extlen, ASN1_ITEM_ptr(method->it));
@@ -226,7 +226,7 @@ void *X509V3_EXT_d2i(X509_EXTENSION *ext)
  * -2 extension occurs more than once.
  */
 
-void *X509V3_get_d2i(STACK_OF(X509_EXTENSION) *x, int nid, int *crit,
+void *X509V3_get_d2i(const STACK_OF(X509_EXTENSION) *x, int nid, int *crit,
                      int *idx)
 {
     int lastpos, i;

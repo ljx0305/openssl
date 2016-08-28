@@ -2,12 +2,14 @@
 
 =head1 NAME
 
+X509_NAME_get0_der - get X509_NAME DER encoding
+
 =head1 SYNOPSIS
 
  #include <openssl/x509.h>
 
- int X509_NAME_get0_der(const unsigned char **pder, size_t *pderlen,
-                        X509_NAME *nm)
+ int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **pder,
+                        size_t *pderlen)
 
 
 =head1 DESCRIPTION

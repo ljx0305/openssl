@@ -33,8 +33,10 @@ static ERR_STRING_DATA EVP_str_functs[] = {
     {ERR_FUNC(EVP_F_EVP_CIPHER_CTX_SET_KEY_LENGTH),
      "EVP_CIPHER_CTX_set_key_length"},
     {ERR_FUNC(EVP_F_EVP_DECRYPTFINAL_EX), "EVP_DecryptFinal_ex"},
+    {ERR_FUNC(EVP_F_EVP_DECRYPTUPDATE), "EVP_DecryptUpdate"},
     {ERR_FUNC(EVP_F_EVP_DIGESTINIT_EX), "EVP_DigestInit_ex"},
     {ERR_FUNC(EVP_F_EVP_ENCRYPTFINAL_EX), "EVP_EncryptFinal_ex"},
+    {ERR_FUNC(EVP_F_EVP_ENCRYPTUPDATE), "EVP_EncryptUpdate"},
     {ERR_FUNC(EVP_F_EVP_MD_CTX_COPY_EX), "EVP_MD_CTX_copy_ex"},
     {ERR_FUNC(EVP_F_EVP_MD_SIZE), "EVP_MD_size"},
     {ERR_FUNC(EVP_F_EVP_OPENINIT), "EVP_OpenInit"},
@@ -60,6 +62,7 @@ static ERR_STRING_DATA EVP_str_functs[] = {
     {ERR_FUNC(EVP_F_EVP_PKEY_GET0_DH), "EVP_PKEY_get0_DH"},
     {ERR_FUNC(EVP_F_EVP_PKEY_GET0_DSA), "EVP_PKEY_get0_DSA"},
     {ERR_FUNC(EVP_F_EVP_PKEY_GET0_EC_KEY), "EVP_PKEY_get0_EC_KEY"},
+    {ERR_FUNC(EVP_F_EVP_PKEY_GET0_HMAC), "EVP_PKEY_get0_hmac"},
     {ERR_FUNC(EVP_F_EVP_PKEY_GET0_RSA), "EVP_PKEY_get0_RSA"},
     {ERR_FUNC(EVP_F_EVP_PKEY_KEYGEN), "EVP_PKEY_keygen"},
     {ERR_FUNC(EVP_F_EVP_PKEY_KEYGEN_INIT), "EVP_PKEY_keygen_init"},
@@ -105,6 +108,7 @@ static ERR_STRING_DATA EVP_str_reasons[] = {
     {ERR_REASON(EVP_R_DIFFERENT_PARAMETERS), "different parameters"},
     {ERR_REASON(EVP_R_ERROR_LOADING_SECTION), "error loading section"},
     {ERR_REASON(EVP_R_ERROR_SETTING_FIPS_MODE), "error setting fips mode"},
+    {ERR_REASON(EVP_R_EXPECTING_AN_HMAC_KEY), "expecting an hmac key"},
     {ERR_REASON(EVP_R_EXPECTING_AN_RSA_KEY), "expecting an rsa key"},
     {ERR_REASON(EVP_R_EXPECTING_A_DH_KEY), "expecting a dh key"},
     {ERR_REASON(EVP_R_EXPECTING_A_DSA_KEY), "expecting a dsa key"},
@@ -131,6 +135,7 @@ static ERR_STRING_DATA EVP_str_reasons[] = {
     {ERR_REASON(EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE),
      "operation not supported for this keytype"},
     {ERR_REASON(EVP_R_OPERATON_NOT_INITIALIZED), "operaton not initialized"},
+    {ERR_REASON(EVP_R_PARTIALLY_OVERLAPPING), "partially overlapping buffers"},
     {ERR_REASON(EVP_R_PRIVATE_KEY_DECODE_ERROR), "private key decode error"},
     {ERR_REASON(EVP_R_PRIVATE_KEY_ENCODE_ERROR), "private key encode error"},
     {ERR_REASON(EVP_R_PUBLIC_KEY_NOT_RSA), "public key not rsa"},
@@ -138,8 +143,8 @@ static ERR_STRING_DATA EVP_str_reasons[] = {
     {ERR_REASON(EVP_R_UNKNOWN_DIGEST), "unknown digest"},
     {ERR_REASON(EVP_R_UNKNOWN_OPTION), "unknown option"},
     {ERR_REASON(EVP_R_UNKNOWN_PBE_ALGORITHM), "unknown pbe algorithm"},
-    {ERR_REASON(EVP_R_UNSUPORTED_NUMBER_OF_ROUNDS),
-     "unsuported number of rounds"},
+    {ERR_REASON(EVP_R_UNSUPPORTED_NUMBER_OF_ROUNDS),
+     "unsupported number of rounds"},
     {ERR_REASON(EVP_R_UNSUPPORTED_ALGORITHM), "unsupported algorithm"},
     {ERR_REASON(EVP_R_UNSUPPORTED_CIPHER), "unsupported cipher"},
     {ERR_REASON(EVP_R_UNSUPPORTED_KEYLENGTH), "unsupported keylength"},
@@ -157,7 +162,7 @@ static ERR_STRING_DATA EVP_str_reasons[] = {
 
 #endif
 
-void ERR_load_EVP_strings(void)
+int ERR_load_EVP_strings(void)
 {
 #ifndef OPENSSL_NO_ERR
 
@@ -166,4 +171,5 @@ void ERR_load_EVP_strings(void)
         ERR_load_strings(0, EVP_str_reasons);
     }
 #endif
+    return 1;
 }

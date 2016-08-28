@@ -86,13 +86,12 @@ int X509_REQ_print_ex(BIO *bp, X509_REQ *x, unsigned long nmflags,
         if (BIO_puts(bp, "\n") <= 0)
             goto err;
 
-        pkey = X509_REQ_get_pubkey(x);
+        pkey = X509_REQ_get0_pubkey(x);
         if (pkey == NULL) {
             BIO_printf(bp, "%12sUnable to load Public Key\n", "");
             ERR_print_errors(bp);
         } else {
             EVP_PKEY_print_public(bp, pkey, 16, NULL);
-            EVP_PKEY_free(pkey);
         }
     }
 
@@ -175,9 +174,9 @@ int X509_REQ_print_ex(BIO *bp, X509_REQ *x, unsigned long nmflags,
     }
 
     if (!(cflag & X509_FLAG_NO_SIGDUMP)) {
-        X509_ALGOR *sig_alg;
-        ASN1_BIT_STRING *sig;
-        X509_REQ_get0_signature(&sig, &sig_alg, x);
+        const X509_ALGOR *sig_alg;
+        const ASN1_BIT_STRING *sig;
+        X509_REQ_get0_signature(x, &sig, &sig_alg);
         if (!X509_signature_print(bp, sig_alg, sig))
             goto err;
     }

@@ -2,7 +2,45 @@
 
 =head1 NAME
 
-engine - ENGINE cryptographic module support
+ENGINE_get_DH, ENGINE_get_DSA, ENGINE_get_ECDH, ENGINE_get_ECDSA,
+ENGINE_by_id, ENGINE_get_cipher_engine, ENGINE_get_default_DH,
+ENGINE_get_default_DSA, ENGINE_get_default_ECDH,
+ENGINE_get_default_ECDSA, ENGINE_get_default_RAND,
+ENGINE_get_default_RSA, ENGINE_get_digest_engine, ENGINE_get_first,
+ENGINE_get_last, ENGINE_get_next, ENGINE_get_prev, ENGINE_new,
+ENGINE_get_ciphers, ENGINE_get_ctrl_function, ENGINE_get_digests,
+ENGINE_get_destroy_function, ENGINE_get_finish_function,
+ENGINE_get_init_function, ENGINE_get_load_privkey_function,
+ENGINE_get_load_pubkey_function, ENGINE_load_private_key,
+ENGINE_load_public_key, ENGINE_get_RAND, ENGINE_get_RSA, ENGINE_get_id,
+ENGINE_get_name, ENGINE_get_cmd_defns, ENGINE_get_cipher,
+ENGINE_get_digest, ENGINE_add, ENGINE_cmd_is_executable,
+ENGINE_ctrl, ENGINE_ctrl_cmd, ENGINE_ctrl_cmd_string,
+ENGINE_finish, ENGINE_free, ENGINE_get_flags, ENGINE_init,
+ENGINE_register_DH, ENGINE_register_DSA, ENGINE_register_ECDH,
+ENGINE_register_ECDSA, ENGINE_register_RAND, ENGINE_register_RSA,
+ENGINE_register_all_complete, ENGINE_register_ciphers,
+ENGINE_register_complete, ENGINE_register_digests, ENGINE_remove,
+ENGINE_set_DH, ENGINE_set_DSA, ENGINE_set_ECDH, ENGINE_set_ECDSA,
+ENGINE_set_RAND, ENGINE_set_RSA, ENGINE_set_ciphers,
+ENGINE_set_cmd_defns, ENGINE_set_ctrl_function, ENGINE_set_default,
+ENGINE_set_default_DH, ENGINE_set_default_DSA, ENGINE_set_default_ECDH,
+ENGINE_set_default_ECDSA, ENGINE_set_default_RAND, ENGINE_set_default_RSA,
+ENGINE_set_default_ciphers, ENGINE_set_default_digests,
+ENGINE_set_default_string, ENGINE_set_destroy_function,
+ENGINE_set_digests, ENGINE_set_finish_function, ENGINE_set_flags,
+ENGINE_set_id, ENGINE_set_init_function, ENGINE_set_load_privkey_function,
+ENGINE_set_load_pubkey_function, ENGINE_set_name, ENGINE_up_ref,
+ENGINE_get_table_flags, ENGINE_cleanup,
+ENGINE_load_builtin_engines, ENGINE_register_all_DH,
+ENGINE_register_all_DSA, ENGINE_register_all_ECDH,
+ENGINE_register_all_ECDSA, ENGINE_register_all_RAND,
+ENGINE_register_all_RSA, ENGINE_register_all_ciphers,
+ENGINE_register_all_digests, ENGINE_set_table_flags, ENGINE_unregister_DH,
+ENGINE_unregister_DSA, ENGINE_unregister_ECDH, ENGINE_unregister_ECDSA,
+ENGINE_unregister_RAND, ENGINE_unregister_RSA, ENGINE_unregister_ciphers,
+ENGINE_unregister_digests
+- ENGINE cryptographic module support
 
 =head1 SYNOPSIS
 
@@ -129,8 +167,6 @@ engine - ENGINE cryptographic module support
      UI_METHOD *ui_method, void *callback_data);
  EVP_PKEY *ENGINE_load_public_key(ENGINE *e, const char *key_id,
      UI_METHOD *ui_method, void *callback_data);
-
- void ENGINE_add_conf_module(void);
 
 Deprecated:
 
@@ -436,8 +472,8 @@ boolean success or failure.
                             const char **post_cmds, int post_num)
  {
      ENGINE *e = ENGINE_by_id(engine_id);
-     if(!e) return 0;
-     while(pre_num--) {
+     if (!e) return 0;
+     while (pre_num--) {
          if(!ENGINE_ctrl_cmd_string(e, pre_cmds[0], pre_cmds[1], 0)) {
              fprintf(stderr, "Failed command (%s - %s:%s)\n", engine_id,
                  pre_cmds[0], pre_cmds[1] ? pre_cmds[1] : "(NULL)");
@@ -446,7 +482,7 @@ boolean success or failure.
          }
          pre_cmds += 2;
      }
-     if(!ENGINE_init(e)) {
+     if (!ENGINE_init(e)) {
          fprintf(stderr, "Failed initialisation\n");
          ENGINE_free(e);
          return 0;
@@ -489,17 +525,17 @@ this symbol is considered a "generic" command is handled directly by the
 OpenSSL core routines.
 
 It is using these "core" control commands that one can discover the control
-commands implemented by a given ENGINE, specifically the commands;
+commands implemented by a given ENGINE, specifically the commands:
 
- #define ENGINE_HAS_CTRL_FUNCTION               10
- #define ENGINE_CTRL_GET_FIRST_CMD_TYPE         11
- #define ENGINE_CTRL_GET_NEXT_CMD_TYPE          12
- #define ENGINE_CTRL_GET_CMD_FROM_NAME          13
- #define ENGINE_CTRL_GET_NAME_LEN_FROM_CMD      14
- #define ENGINE_CTRL_GET_NAME_FROM_CMD          15
- #define ENGINE_CTRL_GET_DESC_LEN_FROM_CMD      16
- #define ENGINE_CTRL_GET_DESC_FROM_CMD          17
- #define ENGINE_CTRL_GET_CMD_FLAGS              18
+ ENGINE_HAS_CTRL_FUNCTION
+ ENGINE_CTRL_GET_FIRST_CMD_TYPE
+ ENGINE_CTRL_GET_NEXT_CMD_TYPE
+ ENGINE_CTRL_GET_CMD_FROM_NAME
+ ENGINE_CTRL_GET_NAME_LEN_FROM_CMD
+ ENGINE_CTRL_GET_NAME_FROM_CMD
+ ENGINE_CTRL_GET_DESC_LEN_FROM_CMD
+ ENGINE_CTRL_GET_DESC_FROM_CMD
+ ENGINE_CTRL_GET_CMD_FLAGS
 
 Whilst these commands are automatically processed by the OpenSSL framework code,
 they use various properties exposed by each ENGINE to process these
@@ -533,12 +569,12 @@ return properties of the corresponding commands. All except
 ENGINE_CTRL_GET_FLAGS return the string length of a command name or description,
 or populate a supplied character buffer with a copy of the command name or
 description. ENGINE_CTRL_GET_FLAGS returns a bitwise-OR'd mask of the following
-possible values;
+possible values:
 
- #define ENGINE_CMD_FLAG_NUMERIC                (unsigned int)0x0001
- #define ENGINE_CMD_FLAG_STRING                 (unsigned int)0x0002
- #define ENGINE_CMD_FLAG_NO_INPUT               (unsigned int)0x0004
- #define ENGINE_CMD_FLAG_INTERNAL               (unsigned int)0x0008
+ ENGINE_CMD_FLAG_NUMERIC
+ ENGINE_CMD_FLAG_STRING
+ ENGINE_CMD_FLAG_NO_INPUT
+ ENGINE_CMD_FLAG_INTERNAL
 
 If the ENGINE_CMD_FLAG_INTERNAL flag is set, then any other flags are purely
 informational to the caller - this flag will prevent the command being usable

@@ -30,11 +30,11 @@ static SRTP_PROTECTION_PROFILE srtp_known_profiles[] = {
      },
     {
      "SRTP_AEAD_AES_128_GCM",
-     SRTP_AEAD_AES_128_GCM
+     SRTP_AEAD_AES_128_GCM,
      },
     {
      "SRTP_AEAD_AES_256_GCM",
-     SRTP_AEAD_AES_256_GCM
+     SRTP_AEAD_AES_256_GCM,
      },
     {0}
 };
@@ -76,21 +76,22 @@ static int ssl_ctx_make_profiles(const char *profiles_string,
     do {
         col = strchr(ptr, ':');
 
-        if (!find_profile_by_name(ptr, &p,
-                                  col ? col - ptr : (int)strlen(ptr))) {
+        if (!find_profile_by_name(ptr, &p, col ? col - ptr : (int)strlen(ptr))) {
             if (sk_SRTP_PROTECTION_PROFILE_find(profiles, p) >= 0) {
                 SSLerr(SSL_F_SSL_CTX_MAKE_PROFILES,
                        SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
-                sk_SRTP_PROTECTION_PROFILE_free(profiles);
-                return 1;
+                goto err;
             }
 
-            sk_SRTP_PROTECTION_PROFILE_push(profiles, p);
+            if (!sk_SRTP_PROTECTION_PROFILE_push(profiles, p)) {
+                SSLerr(SSL_F_SSL_CTX_MAKE_PROFILES,
+                       SSL_R_SRTP_COULD_NOT_ALLOCATE_PROFILES);
+                goto err;
+            }
         } else {
             SSLerr(SSL_F_SSL_CTX_MAKE_PROFILES,
                    SSL_R_SRTP_UNKNOWN_PROTECTION_PROFILE);
-            sk_SRTP_PROTECTION_PROFILE_free(profiles);
-            return 1;
+            goto err;
         }
 
         if (col)
@@ -102,6 +103,9 @@ static int ssl_ctx_make_profiles(const char *profiles_string,
     *out = profiles;
 
     return 0;
+ err:
+    sk_SRTP_PROTECTION_PROFILE_free(profiles);
+    return 1;
 }
 
 int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx, const char *profiles)
@@ -185,8 +189,7 @@ int ssl_parse_clienthello_use_srtp_ext(SSL *s, PACKET *pkt, int *al)
 
     /* Pull off the length of the cipher suite list  and check it is even */
     if (!PACKET_get_net_2(pkt, &ct)
-            || (ct & 1) != 0
-            || !PACKET_get_sub_packet(pkt, &subpkt, ct)) {
+        || (ct & 1) != 0 || !PACKET_get_sub_packet(pkt, &subpkt, ct)) {
         SSLerr(SSL_F_SSL_PARSE_CLIENTHELLO_USE_SRTP_EXT,
                SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
         *al = SSL_AD_DECODE_ERROR;
@@ -233,7 +236,7 @@ int ssl_parse_clienthello_use_srtp_ext(SSL *s, PACKET *pkt, int *al)
     }
 
     if (!PACKET_forward(pkt, mki_len)
-            || PACKET_remaining(pkt)) {
+        || PACKET_remaining(pkt)) {
         SSLerr(SSL_F_SSL_PARSE_CLIENTHELLO_USE_SRTP_EXT,
                SSL_R_BAD_SRTP_MKI_VALUE);
         *al = SSL_AD_DECODE_ERROR;
@@ -276,10 +279,9 @@ int ssl_parse_serverhello_use_srtp_ext(SSL *s, PACKET *pkt, int *al)
     SRTP_PROTECTION_PROFILE *prof;
 
     if (!PACKET_get_net_2(pkt, &ct)
-            || ct != 2
-            || !PACKET_get_net_2(pkt, &id)
-            || !PACKET_get_1(pkt, &mki)
-            || PACKET_remaining(pkt) != 0) {
+        || ct != 2 || !PACKET_get_net_2(pkt, &id)
+        || !PACKET_get_1(pkt, &mki)
+        || PACKET_remaining(pkt) != 0) {
         SSLerr(SSL_F_SSL_PARSE_SERVERHELLO_USE_SRTP_EXT,
                SSL_R_BAD_SRTP_PROTECTION_PROFILE_LIST);
         *al = SSL_AD_DECODE_ERROR;

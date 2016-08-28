@@ -73,9 +73,6 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/ssl.h>
-#ifndef OPENSSL_NO_ENGINE
-# include <openssl/engine.h>
-#endif
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #ifndef OPENSSL_NO_RSA
@@ -855,11 +852,11 @@ static void print_details(SSL *c_ssl, const char *prefix)
                SSL_CIPHER_get_version(ciph), SSL_CIPHER_get_name(ciph));
     cert = SSL_get_peer_certificate(c_ssl);
     if (cert != NULL) {
-        pkey = X509_get_pubkey(cert);
-        if (pkey != NULL) {
+        EVP_PKEY* pubkey = X509_get0_pubkey(cert);
+
+        if (pubkey != NULL) {
             BIO_puts(bio_stdout, ", ");
-            print_key_details(bio_stdout, pkey);
-            EVP_PKEY_free(pkey);
+            print_key_details(bio_stdout, pubkey);
         }
         X509_free(cert);
     }
@@ -957,7 +954,7 @@ static int set_protocol_version(const char *version, SSL *ssl, int setting)
 
 int main(int argc, char *argv[])
 {
-    char *CApath = NULL, *CAfile = NULL;
+    const char *CApath = NULL, *CAfile = NULL;
     int badop = 0;
     enum { BIO_MEM, BIO_PAIR, BIO_IPV4, BIO_IPV6 } bio_type = BIO_MEM;
     int force = 0;
